@@ -193,7 +193,6 @@ table.coach tbody tr:first-child td.tn::before{content:none}
 body.tv #fullLb{grid-area:top}
 body.tv #fullLb .metrics,body.tv #fullLb .lbfilter,body.tv #ptsNote{display:none}
 body.tv #fullLb .panel-h h2{font-size:40px}
-body.tv #fullLb ol.board li:nth-child(n+16){display:none}
 body.tv .tvhide{display:none!important}
 .tvdots{display:none}
 body.tv .tvdots{display:flex;gap:6px;justify-content:center;margin-top:10px}
@@ -201,10 +200,15 @@ body.tv .tvdots i{width:28px;height:4px;background:var(--line)}
 body.tv .tvdots i.on{background:var(--red)}
 .tvclock{display:none}
 body.tv{cursor:none;padding-bottom:16px}
-body.tv .wrap{max-width:none;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);grid-template-areas:"head head" "top side";gap:20px;align-items:start}
+body.tv{overflow:hidden}
+body.tv .wrap{max-width:none;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"head head" "top side";gap:16px;align-items:stretch;height:var(--tvh,100vh)}
+body.tv .allstar,body.tv #fullLb{overflow:hidden;min-height:0}
+body.tv .grid>.col:last-child{height:100%;min-height:0;gap:16px}
+body.tv .grid>.col:last-child>.panel:last-of-type{flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+body.tv .tvfithide{display:none!important}
 body.tv header.top{grid-area:head}
 body.tv .allstar{grid-area:top}
-body.tv .grid{grid-area:side;display:block}
+body.tv .grid{grid-area:side;display:block;min-height:0;height:100%}
 body.tv .grid>.col:first-child,body.tv #padPanel,body.tv #coachPanel,body.tv #loginPanel,body.tv #adminPanel,body.tv footer.foot,body.tv #status{display:none!important}
 body.tv .periods{pointer-events:none}
 body.tv .tvclock{display:block;text-align:right}
@@ -217,8 +221,7 @@ body.tv .who .n{font-size:22px}
 body.tv .who .t{font-size:14px}
 body.tv .rank{font-size:36px}
 body.tv .val b{font-size:36px}
-body.tv ul.feed{max-height:none}
-body.tv ul.feed li:nth-child(n+9){display:none}
+body.tv ul.feed{max-height:none;flex:1 1 auto;min-height:0;overflow:hidden}
 body.tv ul.feed .txt{font-size:17px}
 .tvalert{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(9,9,10,.82);pointer-events:none;opacity:0;transition:opacity .35s}
 .tvalert.on{opacity:1}
@@ -585,6 +588,7 @@ function render(){
   for(const [name,t] of tl){const tr=document.createElement("tr");[name,t.reps,t.approaches.toLocaleString(),t.presentations,t.inups,t.apps,money(t.ap)].forEach((v,i)=>{const td=document.createElement("td");if(!i)td.className="tn";td.textContent=v;tr.appendChild(td)});tb.appendChild(tr)}
 
   renderTop(rows,label);renderCoach(teamArr);renderFeed();renderRoster();
+  if(S.tvFit)S.tvFit();
 }
 function workdaysThisWeek(){const n=periodKeys("week").filter(k=>{const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d).getDay()!==0}).length;return Math.max(1,n)}
 function renderCoach(teamArr){
@@ -769,10 +773,19 @@ if(TV){
   let vi=0;
   const showView=()=>{const v=views[vi];top.classList.toggle("tvhide",!!v);lb.classList.toggle("tvhide",!v);
     if(v){S.metric=v;$("fullLbTitle").textContent="Full leaderboard · "+VL[v];render()}
-    (v?lb:top).appendChild(dots);[...dots.children].forEach((d,i)=>d.classList.toggle("on",i===vi))};
+    (v?lb:top).appendChild(dots);[...dots.children].forEach((d,i)=>d.classList.toggle("on",i===vi));S.tvFit()};
   showView();setInterval(()=>{vi=(vi+1)%views.length;showView()},20000);
   document.body.classList.add("tv");document.title="V12 Door Board · TV";
-  const fit=()=>{document.body.style.zoom=Math.max(.8,Math.min(2.2,innerWidth/1500)).toFixed(2)};fit();addEventListener("resize",fit);
+  const fit=()=>{const z=Math.max(.6,Math.min(2.2,innerWidth/1500));document.body.style.zoom=z.toFixed(3);
+    const pad=parseFloat(getComputedStyle(document.body).paddingBottom)||0;
+    document.documentElement.style.setProperty("--tvh",Math.floor(innerHeight/z-pad-8)+"px");S.tvFit&&S.tvFit()};
+  // Hide whole rows that don't fit, so nothing on the TV is ever cut in half.
+  S.tvFit=()=>requestAnimationFrame(()=>{for(const id of ["feed","board","topApps","topAP"]){const ul=$(id);if(!ul)continue;
+    [...ul.children].forEach(li=>li.classList.remove("tvfithide"));
+    const box=ul.closest(".panel");if(!box||box.classList.contains("tvhide"))continue;
+    const lim=box.getBoundingClientRect().bottom-4;
+    [...ul.children].forEach(li=>{if(li.getBoundingClientRect().bottom>lim)li.classList.add("tvfithide")})}});
+  fit();addEventListener("resize",fit);
   const tick=()=>{const d=new Date();$("tvTime").textContent=d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});$("tvDate").textContent=d.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})};tick();setInterval(tick,15000);
   const order=["today","week"];let pi=0;
   setInterval(()=>{pi=(pi+1)%order.length;S.period=order[pi];document.querySelectorAll(".periods button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.p===S.period));render()},60000);
@@ -821,7 +834,7 @@ $("fixDay").value=dayKey(new Date());
   let got=0;const ready=()=>{if(++got>=3){setLive(true,"Live");synced()}};
   db.collection("roster").onSnapshot(s=>{S.roster=new Map(s.docs.map(d=>[d.id,d.data()]));if(!s.metadata.fromCache)ready();render();synced()},fail);
   db.collection("stats").onSnapshot(s=>{S.stats=new Map(s.docs.map(d=>[d.id,d.data()]));if(!s.metadata.fromCache)ready();render();synced()},fail);
-  db.collection("feed").orderBy("ts","desc").limit(40).onSnapshot(s=>{S.feed=s.docs.map(d=>Object.assign({id:d.id},d.data()));if(!s.metadata.fromCache)ready();renderFeed();synced();
+  db.collection("feed").orderBy("ts","desc").limit(40).onSnapshot(s=>{S.feed=s.docs.map(d=>Object.assign({id:d.id},d.data()));if(!s.metadata.fromCache)ready();renderFeed();synced();if(S.tvFit)S.tvFit();
     if(TV)for(const c of s.docChanges()){const f=c.doc.data();if(c.type==="added"&&f&&f.type==="apps"&&Number(f.ts)>BOOT)tvAlert(f)}},fail);
   db.doc("config/main").onSnapshot(s=>{const d=s.exists?s.data():null;
     S.teams=d&&Array.isArray(d.teams)?d.teams.filter(t=>typeof t==="string"):(window.V12_DEFAULT_TEAMS||[]);S.teamList=S.teams;
