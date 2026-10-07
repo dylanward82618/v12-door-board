@@ -174,6 +174,21 @@ ul.feed li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;a
 .note{font-size:13px;color:var(--muted)}
 .roster{display:flex;flex-direction:column;gap:4px;margin-top:10px;max-height:240px;overflow-y:auto}
 .roster div{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line)}
+.coachctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:flex;gap:3px;background:var(--panel);border:1px solid var(--line);padding:3px}
+.seg button{border:0;background:none;padding:6px 12px;font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--red);color:var(--white)}
+table.coach td.nm{font-weight:700;color:var(--white);white-space:nowrap}
+table.coach td.low{color:var(--red-hot);font-weight:700}
+table.coach td.hit{color:var(--good);font-weight:700}
+table.coach td.last{color:var(--muted);white-space:nowrap}
+table.coach tbody tr:first-child td{color:inherit}
+table.coach tbody tr:first-child td.tn::before{content:none}
+.pill{display:inline-block;font-family:var(--display);font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;white-space:nowrap}
+.pill.none{background:var(--red);color:var(--white)}
+.pill.low{background:var(--red-deep);color:var(--red-hot);border:1px solid var(--red)}
+.pill.prog{background:var(--panel-2);color:var(--ink);border:1px solid var(--line)}
+.pill.hit{background:var(--good-soft);color:var(--good)}
 .status{padding:10px 14px;border-left:3px solid var(--red);background:var(--red-deep);font-size:14px}
 [hidden]{display:none!important}
 html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -329,6 +344,27 @@ footer.foot{display:flex;justify-content:center;gap:14px;padding-block:8px;color
 
     </div>
   </div>
+
+  <section class="panel" id="coachPanel" aria-label="Coaching view">
+    <div class="panel-h">
+      <h2>Coaching view</h2>
+      <div class="coachctl">
+        <label for="coachTeam" class="note">Team</label>
+        <select id="coachTeam"><option value="all">All teams</option></select>
+        <div class="seg" role="group" aria-label="Coaching period">
+          <button type="button" data-c="today" aria-pressed="true">Today</button>
+          <button type="button" data-c="week" aria-pressed="false">This week</button>
+        </div>
+      </div>
+    </div>
+    <p class="note" id="coachNote" style="margin:0 0 10px"></p>
+    <div class="tablewrap">
+      <table class="coach">
+        <thead><tr><th>Rep</th><th>Status</th><th>Appr.</th><th>Pres.</th><th>In &amp; Up</th><th>Apps</th><th>AP</th><th>Leads (wk)</th><th>Last log</th></tr></thead>
+        <tbody id="coachBody"><tr><td colspan="9" class="note" style="text-align:center">Reps show up here once they sign up.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
 
   <section class="panel" id="loginPanel" aria-label="Admin sign in" hidden>
     <div class="panel-h"><h2>Admin sign in</h2></div>
@@ -507,7 +543,40 @@ function render(){
   if(!tl.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=7;td.className="note";td.style.textAlign="center";td.textContent="Teams show up once reps log activity.";tr.appendChild(td);tb.appendChild(tr)}
   for(const [name,t] of tl){const tr=document.createElement("tr");[name,t.reps,t.approaches.toLocaleString(),t.presentations,t.inups,t.apps,money(t.ap)].forEach((v,i)=>{const td=document.createElement("td");if(!i)td.className="tn";td.textContent=v;tr.appendChild(td)});tb.appendChild(tr)}
 
-  renderTop(rows,label);renderFeed();renderRoster();
+  renderTop(rows,label);renderCoach(teamArr);renderFeed();renderRoster();
+}
+function workdaysThisWeek(){const n=periodKeys("week").filter(k=>{const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d).getDay()!==0}).length;return Math.max(1,n)}
+function renderCoach(teamArr){
+  const T=S.targets,cp=S.coachPeriod||"today",sel=$("coachTeam"),sig=teamArr.join("|");
+  if(sel.dataset.sig!==sig){const keep=sel.dataset.sig?sel.value:(S.coachTeam||"all");sel.textContent="";const a=document.createElement("option");a.value="all";a.textContent="All teams";sel.appendChild(a);teamArr.forEach(t=>{const o=document.createElement("option");o.value=t;o.textContent=t;sel.appendChild(o)});sel.value=teamArr.includes(keep)?keep:"all";sel.dataset.sig=sig}
+  const team=sel.value,days=cp==="week"?workdaysThisWeek():1;
+  const tA=T.approachesDay*days,tP=T.presentationsDay*days;
+  $("coachNote").textContent=cp==="week"?"Targets so far this week ("+days+" workday"+(days>1?"s":"")+", Mon–Sat): "+tA+" approaches · "+tP+" presentations · "+T.leadsWeekMin+"–"+T.leadsWeekMax+" leads. Reps who need help are listed first.":"Today's targets: "+tA+" approaches · "+tP+" presentations. Reps who need help are listed first.";
+  const keys=periodKeys(cp),wk=periodKeys("week");
+  const rows=[...S.roster.entries()].filter(([,r])=>!r.hidden&&(team==="all"||(r.team||"Unassigned")===team)).map(([id,r])=>{
+    const a=agg(id,keys),w=agg(id,wk),doc=S.stats.get(id);
+    const any=KINDS.some(k=>a[k]>0);const pace=Math.min(a.approaches/tA,a.presentations/tP);
+    const st=!any?"none":pace>=1?"hit":pace<.5?"low":"prog";
+    return{id,name:r.name,team:r.team||"Unassigned",a,leads:w.leads,st,pace,any,last:doc&&doc.updatedAt||0};
+  });
+  const order={none:0,low:1,prog:2,hit:3};
+  rows.sort((x,y)=>order[x.st]-order[y.st]||x.pace-y.pace||x.name.localeCompare(y.name));
+  const tb=$("coachBody");tb.textContent="";
+  if(!rows.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=9;td.className="note";td.style.textAlign="center";td.textContent=S.roster.size?"No reps on this team yet.":"Reps show up here once they sign up.";tr.appendChild(td);tb.appendChild(tr);return}
+  const LBL={none:"No activity",low:"Low",prog:"In progress",hit:"Hit target"};
+  for(const r of rows){
+    const tr=document.createElement("tr");
+    const cell=(txt,cls)=>{const td=document.createElement("td");td.textContent=txt;if(cls)td.className=cls;tr.appendChild(td);return td};
+    const nm=cell(r.name,"nm");if(team==="all"){const sm=document.createElement("div");sm.className="note";sm.style.fontWeight="400";sm.textContent=r.team;nm.appendChild(sm)}
+    const pc=cell("");const pill=document.createElement("span");pill.className="pill "+r.st;pill.textContent=LBL[r.st];pc.appendChild(pill);
+    const ratio=(v,t)=>v>=t?"hit":v<t*.5?"low":"";
+    cell(r.a.approaches+"/"+tA,ratio(r.a.approaches,tA));
+    cell(r.a.presentations+"/"+tP,ratio(r.a.presentations,tP));
+    cell(r.a.inups);cell(r.a.apps);cell(money(r.a.ap));
+    cell(r.leads+"/"+T.leadsWeekMin,r.leads>=T.leadsWeekMin?"hit":r.leads===0?"low":"");
+    cell(r.last?ago(r.last):"Never","last");
+    tb.appendChild(tr);
+  }
 }
 function renderTop(rows,label){
   $("topPeriod").textContent=label;
@@ -612,6 +681,9 @@ async function logTap(kind,amount){
 document.querySelectorAll(".periods button").forEach(b=>b.onclick=()=>{S.period=b.dataset.p;document.querySelectorAll(".periods button").forEach(x=>x.setAttribute("aria-pressed",x===b));render()});
 document.querySelectorAll(".metrics button").forEach(b=>b.onclick=()=>{S.metric=b.dataset.m;document.querySelectorAll(".metrics button").forEach(x=>x.setAttribute("aria-pressed",x===b));render()});
 $("teamFilter").onchange=e=>{S.team=e.target.value;try{localStorage.setItem("v12-team",S.team)}catch(_){}render()};
+$("coachTeam").onchange=e=>{S.coachTeam=e.target.value;try{localStorage.setItem("v12-coach-team",S.coachTeam)}catch(_){}render()};
+document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{S.coachPeriod=b.dataset.c;document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed",x===b));render()});
+try{S.coachTeam=localStorage.getItem("v12-coach-team")||"all"}catch(_){}
 $("logDay").onchange=e=>{S.logDay=e.target.value;render()};
 $("me").onchange=e=>{S.me=e.target.value;if(S.me){S.addDismissed=true;$("addBox").hidden=true}try{localStorage.setItem("v12-me",S.me)}catch(_){}render()};
 $("addToggle").onclick=()=>{const b=$("addBox");b.hidden=!b.hidden;S.addDismissed=b.hidden;if(!b.hidden)$("newName").focus()};
