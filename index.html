@@ -189,6 +189,36 @@ table.coach tbody tr:first-child td.tn::before{content:none}
 .pill.low{background:var(--red-deep);color:var(--red-hot);border:1px solid var(--red)}
 .pill.prog{background:var(--panel-2);color:var(--ink);border:1px solid var(--line)}
 .pill.hit{background:var(--good-soft);color:var(--good)}
+/* ---- TV mode (?tv) ---- */
+.tvclock{display:none}
+body.tv{cursor:none;padding-bottom:16px}
+body.tv .wrap{max-width:none;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);grid-template-areas:"head head" "top side";gap:20px;align-items:start}
+body.tv header.top{grid-area:head}
+body.tv .allstar{grid-area:top}
+body.tv .grid{grid-area:side;display:block}
+body.tv .grid>.col:first-child,body.tv #padPanel,body.tv #coachPanel,body.tv #loginPanel,body.tv #adminPanel,body.tv footer.foot,body.tv #status{display:none!important}
+body.tv .periods{pointer-events:none}
+body.tv .tvclock{display:block;text-align:right}
+body.tv .tvclock b{display:block;font-family:var(--display);font-weight:800;font-style:italic;font-size:64px;line-height:.9;color:var(--white)}
+body.tv .tvclock span{font-family:var(--display);font-weight:600;letter-spacing:.16em;text-transform:uppercase;font-size:16px;color:var(--muted)}
+body.tv .allstar .panel-h h2{font-size:40px}
+body.tv .duo h3{font-size:24px}
+body.tv ol.board li{padding:12px 6px}
+body.tv .who .n{font-size:22px}
+body.tv .who .t{font-size:14px}
+body.tv .rank{font-size:36px}
+body.tv .val b{font-size:36px}
+body.tv ul.feed{max-height:none}
+body.tv ul.feed li:nth-child(n+9){display:none}
+body.tv ul.feed .txt{font-size:17px}
+.tvalert{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(9,9,10,.82);pointer-events:none;opacity:0;transition:opacity .35s}
+.tvalert.on{opacity:1}
+.tvalert .card{text-align:center;padding:40px 70px;background:var(--red);clip-path:polygon(4% 0,100% 0,96% 100%,0 100%);box-shadow:0 0 120px rgba(225,6,0,.7);transform:scale(.9);transition:transform .35s}
+.tvalert.on .card{transform:scale(1)}
+.tvalert .k{font-family:var(--display);font-weight:800;font-style:italic;letter-spacing:.2em;text-transform:uppercase;font-size:28px;color:#ffd9d6}
+.tvalert .who{font-family:var(--display);font-weight:800;font-style:italic;text-transform:uppercase;font-size:84px;line-height:1;color:var(--white);margin:10px 0}
+.tvalert .amt{font-family:var(--display);font-weight:800;font-size:56px;color:var(--white)}
+@media (prefers-reduced-motion:reduce){.tvalert,.tvalert .card{transition:none}}
 .status{padding:10px 14px;border-left:3px solid var(--red);background:var(--red-deep);font-size:14px}
 [hidden]{display:none!important}
 html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -225,7 +255,9 @@ footer.foot{display:flex;justify-content:center;gap:14px;padding-block:8px;color
       <button data-p="week" aria-pressed="false"><span>This week</span></button>
       <button data-p="month" aria-pressed="false"><span>This month</span></button>
     </div>
+    <div class="tvclock" aria-hidden="true"><b id="tvTime"></b><span id="tvDate"></span></div>
   </header>
+  <div class="tvalert" id="tvAlert" aria-live="polite"><div class="card"><div class="k">New app written</div><div class="who" id="tvWho"></div><div class="amt num" id="tvAmt"></div></div></div>
 
   <div class="status" id="status" hidden></div>
 
@@ -712,6 +744,21 @@ $("undo").onclick=async()=>{
   for(const f of u.feeds){try{await S.db.doc("feed/"+f).delete()}catch(e){}}
   flash("Undone");
 };
+const TV=new URLSearchParams(location.search).has("tv"),BOOT=Date.now();
+const alertQ=[];let alertBusy=false;
+function tvAlert(f){alertQ.push(f);if(!alertBusy)nextAlert()}
+function nextAlert(){const f=alertQ.shift();if(!f){alertBusy=false;return}alertBusy=true;
+  $("tvWho").textContent=nameOf(f.agentId);$("tvAmt").textContent=f.ap?money(f.ap)+" AP":"";
+  const el=$("tvAlert");el.classList.add("on");setTimeout(()=>{el.classList.remove("on");setTimeout(nextAlert,600)},7000)}
+if(TV){
+  document.body.classList.add("tv");document.title="V12 Door Board · TV";
+  const fit=()=>{document.body.style.zoom=Math.max(.8,Math.min(2.2,innerWidth/1500)).toFixed(2)};fit();addEventListener("resize",fit);
+  const tick=()=>{const d=new Date();$("tvTime").textContent=d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});$("tvDate").textContent=d.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})};tick();setInterval(tick,15000);
+  const order=["today","week"];let pi=0;
+  setInterval(()=>{pi=(pi+1)%order.length;S.period=order[pi];document.querySelectorAll(".periods button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.p===S.period));render()},45000);
+  let lock=null;const wake=async()=>{try{if("wakeLock" in navigator&&document.visibilityState==="visible")lock=await navigator.wakeLock.request("screen")}catch(e){}};wake();document.addEventListener("visibilitychange",wake);
+  setInterval(()=>{if(Date.now()-BOOT>6*3600000)location.reload()},600000);
+}
 S._day=dayKey(new Date());
 setInterval(()=>{renderFeed();const d=dayKey(new Date());if(d!==S._day){S._day=d;S.logDay="";render()}},30000);
 render();
@@ -751,7 +798,8 @@ $("fixDay").value=dayKey(new Date());
   let got=0;const ready=()=>{if(++got>=3)setLive(true,"Live")};
   db.collection("roster").onSnapshot(s=>{S.roster=new Map(s.docs.map(d=>[d.id,d.data()]));if(!s.metadata.fromCache)ready();render()},fail);
   db.collection("stats").onSnapshot(s=>{S.stats=new Map(s.docs.map(d=>[d.id,d.data()]));if(!s.metadata.fromCache)ready();render()},fail);
-  db.collection("feed").orderBy("ts","desc").limit(40).onSnapshot(s=>{S.feed=s.docs.map(d=>Object.assign({id:d.id},d.data()));if(!s.metadata.fromCache)ready();renderFeed()},fail);
+  db.collection("feed").orderBy("ts","desc").limit(40).onSnapshot(s=>{S.feed=s.docs.map(d=>Object.assign({id:d.id},d.data()));if(!s.metadata.fromCache)ready();renderFeed();
+    if(TV)for(const c of s.docChanges()){const f=c.doc.data();if(c.type==="added"&&f&&f.type==="apps"&&Number(f.ts)>BOOT)tvAlert(f)}},fail);
   db.doc("config/main").onSnapshot(s=>{const d=s.exists?s.data():null;
     S.teams=d&&Array.isArray(d.teams)?d.teams.filter(t=>typeof t==="string"):(window.V12_DEFAULT_TEAMS||[]);S.teamList=S.teams;
     const t=(d&&d.targets)||{};S.targets={...DEF_T};for(const k in DEF_T)if(Number(t[k])>0)S.targets[k]=Number(t[k]);
