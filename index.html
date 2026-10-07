@@ -760,10 +760,10 @@ function nextAlert(){const f=alertQ.shift();if(!f){alertBusy=false;return}alertB
   $("tvWho").textContent=nameOf(f.agentId);$("tvAmt").textContent=f.ap?money(f.ap)+" AP":"";
   const el=$("tvAlert");el.classList.add("on");setTimeout(()=>{el.classList.remove("on");setTimeout(nextAlert,600)},7000)}
 if(TV){
-  // Left side rotates: Top Agents (Apps + AP) -> Full leaderboard by points, apps, AP, presentations, approaches
+  // Left side rotates: Top Agents (Apps + AP) -> Full leaderboard by Apps -> Full leaderboard by AP
   const lb=$("fullLb"),top=document.querySelector(".allstar"),grid=document.querySelector(".grid");
   grid.parentNode.insertBefore(lb,grid);S.team="all";
-  const views=[null,"points","apps","ap","presentations","approaches"];
+  const views=[null,"apps","ap"];
   const VL={points:"Points",apps:"Apps",ap:"AP",presentations:"Presentations",approaches:"Approaches"};
   const dots=document.createElement("div");dots.className="tvdots";views.forEach(()=>dots.appendChild(document.createElement("i")));
   let vi=0;
@@ -775,7 +775,7 @@ if(TV){
   const fit=()=>{document.body.style.zoom=Math.max(.8,Math.min(2.2,innerWidth/1500)).toFixed(2)};fit();addEventListener("resize",fit);
   const tick=()=>{const d=new Date();$("tvTime").textContent=d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});$("tvDate").textContent=d.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})};tick();setInterval(tick,15000);
   const order=["today","week"];let pi=0;
-  setInterval(()=>{pi=(pi+1)%order.length;S.period=order[pi];document.querySelectorAll(".periods button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.p===S.period));render()},120000);
+  setInterval(()=>{pi=(pi+1)%order.length;S.period=order[pi];document.querySelectorAll(".periods button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.p===S.period));render()},60000);
   let lock=null;const wake=async()=>{try{if("wakeLock" in navigator&&document.visibilityState==="visible")lock=await navigator.wakeLock.request("screen")}catch(e){}};wake();document.addEventListener("visibilitychange",wake);
   // Safety net for TVs and mirrored screens: reload every 10 minutes so the board can never sit stale for long.
   setInterval(()=>{location.reload()},600000);
