@@ -3,12 +3,12 @@
 // Access is controlled by the rules in firestore.rules.
 
 window.V12_FIREBASE_CONFIG = {
-  apiKey: "PASTE_API_KEY",
-  authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
-  projectId: "PASTE_PROJECT_ID",
-  storageBucket: "PASTE_PROJECT_ID.appspot.com",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId: "PASTE_APP_ID"
+  apiKey: "AIzaSyA9EOE_uPfTafrdjts2vlV4b5F0dzWdtlM",
+  authDomain: "v12-door-board.firebaseapp.com",
+  projectId: "v12-door-board",
+  storageBucket: "v12-door-board.firebasestorage.app",
+  messagingSenderId: "389773234678",
+  appId: "1:389773234678:web:93af42f17fdfb4313b37d7"
 };
 
 // The email you created as the admin user in Firebase Authentication.
