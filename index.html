@@ -773,7 +773,7 @@ if(TV){
   let vi=0;
   const showView=()=>{const v=views[vi];top.classList.toggle("tvhide",!!v);lb.classList.toggle("tvhide",!v);
     if(v){S.metric=v;$("fullLbTitle").textContent="Full leaderboard · "+VL[v];render()}
-    (v?lb:top).appendChild(dots);[...dots.children].forEach((d,i)=>d.classList.toggle("on",i===vi));S.tvFit()};
+    (v?lb:top).appendChild(dots);[...dots.children].forEach((d,i)=>d.classList.toggle("on",i===vi));if(S.tvFit)S.tvFit()};
   showView();setInterval(()=>{vi=(vi+1)%views.length;showView()},20000);
   document.body.classList.add("tv");document.title="V12 Door Board · TV";
   const fit=()=>{const z=Math.max(.6,Math.min(2.2,innerWidth/1500));document.body.style.zoom=z.toFixed(3);
