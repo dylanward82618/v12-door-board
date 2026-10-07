@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#09090a">
+<title>V12 Door Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: race-day scoreboard. Black pit wall, red for the money (apps, AP, rank 1), white for the numbers. Header with racing stripes, then the all-teams Top Agents board full width, then the field desk: log pad + full leaderboard left, team pulse + standings + live feed right; stacks on phones with the log pad first.
+   Deliberately single-theme (V12 team colors: black, red, white). */
+:root{
+  color-scheme:dark;
+  --bg:#09090a; --panel:#131315; --panel-2:#1b1b1e; --ink:#f6f5f2; --muted:#a3a3a8; --line:#2b2b30;
+  --red:#e10600; --red-hot:#ff4136; --red-deep:#2a0705; --white:#ffffff;
+  --good:#3fd98a; --good-soft:#0f2a1c; --gold:#f2c230; --silver:#d5d7dd; --bronze:#d08a52;
+  --display:"Barlow Condensed","Arial Narrow",Impact,sans-serif;
+  --body:"Barlow","Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;padding:0 16px 48px;
+  background-image:radial-gradient(1200px 400px at 85% -120px,rgba(225,6,0,.22),transparent 70%),repeating-linear-gradient(135deg,rgba(255,255,255,.018) 0 2px,transparent 2px 6px)}
+.wrap{max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.num{font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--display);font-weight:600;letter-spacing:.16em;text-transform:uppercase;font-size:13px;color:var(--muted)}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--red-hot);outline-offset:2px}
+
+/* header */
+header.top{position:relative;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px;padding-block:26px 18px}
+header.top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:8px;
+  background:repeating-linear-gradient(-55deg,var(--red) 0 14px,var(--bg) 14px 18px,var(--white) 18px 22px,var(--bg) 22px 26px)}
+.brand h1{font-size:clamp(40px,8vw,66px);font-weight:800;font-style:italic;line-height:.85;letter-spacing:-.01em;text-transform:uppercase;color:var(--white)}
+.brand h1 .v12{color:var(--red);margin-right:.12em;text-shadow:0 0 28px rgba(225,6,0,.55)}
+.brand .eyebrow{margin-top:8px}
+.live{display:inline-flex;align-items:center;gap:7px;margin-top:6px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+.live.on{color:var(--ink)}
+.live.on .dot{background:var(--red-hot);animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,65,54,.7)}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+@media (prefers-reduced-motion:reduce){.live.on .dot{animation:none}}
+.periods{display:flex;gap:3px;background:var(--panel);border:1px solid var(--line);padding:4px;transform:skewX(-10deg)}
+.periods button{border:0;background:none;padding:8px 16px;font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.periods button span,.periods button{display:inline-block}
+.periods button>*{transform:skewX(10deg)}
+.periods button[aria-pressed="true"]{background:var(--red);color:var(--white)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:18px;min-width:0}
+.panel{position:relative;background:linear-gradient(180deg,var(--panel-2),var(--panel) 120px);border:1px solid var(--line);border-radius:4px;padding:18px;min-width:0;
+  clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,0 100%)}
+.panel::before{content:"";position:absolute;left:0;top:0;width:56px;height:3px;background:var(--red)}
+.panel-h{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:14px}
+.panel-h h2{font-size:26px;font-weight:800;font-style:italic;text-transform:uppercase;letter-spacing:.02em;color:var(--white)}
+
+/* top agents */
+.allstar{border-color:rgba(225,6,0,.55);background:linear-gradient(120deg,var(--red-deep),var(--panel) 45%)}
+.allstar::before{width:100%;height:4px}
+.allstar .panel-h h2{font-size:30px}
+.duo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px}
+@media (max-width:620px){.duo{grid-template-columns:1fr}}
+.duo h3{font-size:18px;font-weight:800;font-style:italic;text-transform:uppercase;letter-spacing:.1em;color:var(--red-hot);margin-bottom:4px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+
+/* log pad */
+.pad{border-color:var(--red)}
+.whoami,.logday{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.whoami{margin-bottom:12px}
+.logday{margin:0 0 14px}
+.whoami label,.logday label{font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+select,input[type=text],input[type=number]{background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:9px 10px;min-width:0;color:var(--ink)}
+select:focus,input:focus{border-color:var(--red)}
+select#me{flex:1 1 200px;font-weight:600}
+.logday select.back{border:2px solid var(--red);background:var(--red-deep);font-weight:700}
+.logday .warn{font-size:13px;font-weight:600;color:var(--red-hot)}
+.linkbtn{border:0;background:none;color:var(--red-hot);font-weight:600;text-decoration:underline;text-underline-offset:3px;padding:6px 2px}
+.taps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+@media (max-width:620px){.taps{grid-template-columns:repeat(2,minmax(0,1fr))}.tap.leads{grid-column:1/-1}}
+.tap{border:1px solid var(--line);border-bottom:3px solid var(--white);background:var(--panel-2);border-radius:3px;padding:14px 6px 12px;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;transition:transform .08s,border-color .15s,background .15s}
+.tap:hover:not(:disabled){border-color:var(--red);background:#222226}
+.tap:active{transform:scale(.95)}
+.tap .plus{font-family:var(--display);font-weight:800;font-style:italic;font-size:18px;text-transform:uppercase;letter-spacing:.04em;line-height:1.05}
+.tap .ct{font-family:var(--display);font-weight:800;font-size:38px;line-height:1;color:var(--white)}
+.tap .sub{font-size:12px;color:var(--muted)}
+.tap.sale{background:var(--red);border-color:var(--red);border-bottom-color:var(--white);color:var(--white);box-shadow:0 8px 24px rgba(225,6,0,.35)}
+.tap.sale:hover:not(:disabled){background:var(--red-hot)}
+.tap.sale .sub{color:#ffd9d6}
+.tap:disabled{opacity:.4;cursor:not-allowed}
+.inbox,.addbox{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;padding:12px;border-radius:3px;background:var(--red-deep);border:1px solid rgba(225,6,0,.5)}
+.addbox{margin:0 0 14px}
+.inbox input{width:130px}
+.primary{border:0;background:var(--red);color:var(--white);border-radius:3px;padding:9px 18px;font-family:var(--display);font-weight:800;font-style:italic;font-size:16px;letter-spacing:.06em;text-transform:uppercase}
+.primary:hover{background:var(--red-hot)}
+.ghost{border:1px solid var(--line);background:var(--panel-2);border-radius:3px;padding:8px 14px;font-weight:600}
+.padfoot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin-top:12px;color:var(--muted);font-size:13px}
+.toast{min-height:20px;font-weight:700;color:var(--good)}
+
+/* targets */
+.targets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+@media (max-width:520px){.targets{grid-template-columns:1fr}}
+.tg .top{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.tg .lab{font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;color:var(--muted)}
+.tg .fig{font-family:var(--display);font-weight:800;font-size:26px;color:var(--white)}
+.tg .fig small{font-size:15px;color:var(--muted);font-weight:600}
+.meter{position:relative;height:8px;background:var(--line);margin-top:4px;overflow:hidden;transform:skewX(-20deg)}
+.meter i{position:absolute;left:0;top:0;bottom:0;background:var(--red);transition:width .4s}
+.meter.hit i{background:var(--good)}
+.meter b{position:absolute;top:0;bottom:0;width:2px;background:var(--white)}
+.tg .st{font-size:12px;margin-top:5px;color:var(--muted)}
+.tg .st.hit{color:var(--good);font-weight:700}
+
+/* pulse */
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+.tile{background:var(--bg);padding:12px 8px;text-align:center}
+.tile b{display:block;font-family:var(--display);font-weight:800;font-size:34px;line-height:1.05;color:var(--white)}
+.tile span{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600}
+.tile.ap{background:var(--red)}
+.tile.ap span{color:#ffd9d6}
+.funnel{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{display:inline-flex;gap:6px;align-items:baseline;padding:5px 11px;background:var(--bg);border:1px solid var(--line);border-left:3px solid var(--red);font-size:13px;color:var(--muted)}
+.chip b{font-family:var(--display);font-size:18px;color:var(--white)}
+
+/* leaderboards */
+.metrics{display:flex;flex-wrap:wrap;gap:6px}
+.metrics button{border:1px solid var(--line);background:var(--bg);border-radius:2px;padding:5px 12px;font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.metrics button[aria-pressed="true"]{background:var(--white);border-color:var(--white);color:var(--bg)}
+.lbfilter{display:flex;gap:8px;align-items:center;margin:10px 0 6px;flex-wrap:wrap}
+ol.board{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+ol.board li{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 6px;border-bottom:1px solid var(--line)}
+ol.board li:last-child{border-bottom:0}
+.rank{font-family:var(--display);font-weight:800;font-style:italic;font-size:28px;text-align:center;color:var(--muted)}
+li.r1 .rank{color:var(--gold);text-shadow:0 0 18px rgba(242,194,48,.45)} li.r2 .rank{color:var(--silver)} li.r3 .rank{color:var(--bronze)}
+li.r1{background:linear-gradient(90deg,rgba(225,6,0,.22),transparent 70%)}
+li.me{outline:1px solid var(--red);outline-offset:-1px}
+.who{min-width:0}
+.who .n{font-weight:700;display:flex;gap:6px;align-items:center;flex-wrap:wrap;color:var(--white)}
+.who .n span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.who .t{font-size:12px;color:var(--muted)}
+.hitpill{font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 7px;border-radius:2px;background:var(--good-soft);color:var(--good)}
+.bar{height:4px;background:var(--line);margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--silver);transition:width .4s}
+li.r1 .bar i{background:var(--red)}
+.val{text-align:right}
+.val b{font-family:var(--display);font-weight:800;font-size:28px;line-height:1;color:var(--white)}
+li.r1 .val b{color:var(--red-hot)}
+.val small{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.empty{color:var(--muted);padding:18px 4px;text-align:center}
+
+/* teams */
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-family:var(--display);font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);text-align:right;font-weight:700;padding:6px;border-bottom:2px solid var(--red);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+tbody tr:first-child td{color:var(--white)}
+tbody tr:first-child td.tn::before{content:"▲ ";color:var(--red)}
+tr:last-child td{border-bottom:0}
+td.tn{font-weight:700}
+
+/* feed */
+ul.feed{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;max-height:420px;overflow-y:auto}
+ul.feed li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 2px;border-bottom:1px solid var(--line)}
+.badge{font-family:var(--display);font-weight:800;font-style:italic;font-size:13px;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;white-space:nowrap}
+.badge.apps{background:var(--red);color:var(--white)}
+.badge.inups{background:var(--white);color:var(--bg)}
+.badge.goal{background:var(--good-soft);color:var(--good)}
+.feed .txt{min-width:0}
+.feed .txt b{color:var(--white)}
+.feed .ago{font-size:12px;color:var(--muted);white-space:nowrap}
+.note{font-size:13px;color:var(--muted)}
+.roster{display:flex;flex-direction:column;gap:4px;margin-top:10px;max-height:240px;overflow-y:auto}
+.roster div{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line)}
+.status{padding:10px 14px;border-left:3px solid var(--red);background:var(--red-deep);font-size:14px}
+[hidden]{display:none!important}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+.admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+@media (max-width:760px){.admin-grid{grid-template-columns:1fr}}
+.admin-grid h3{font-size:18px;font-weight:800;font-style:italic;text-transform:uppercase;letter-spacing:.08em;color:var(--red-hot);margin-bottom:8px}
+.admin-grid textarea{width:100%;min-height:150px;background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:9px 10px;color:var(--ink);font:inherit}
+.frow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+.frow label{min-width:150px;color:var(--muted);font-size:13px}
+.frow input[type=number]{width:90px}
+.rrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)}
+@media (max-width:520px){.rrow{grid-template-columns:1fr 1fr}}
+.rrow input,.rrow select{width:100%}
+.fixgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0}
+.fixgrid label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+.fixgrid input{width:100%}
+footer.foot{display:flex;justify-content:center;gap:14px;padding-block:8px;color:var(--muted);font-size:13px}
+.loginbox{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.loginbox input{flex:1 1 180px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1><span class="v12">V12</span>Door Board</h1>
+      <div class="eyebrow">Final Expense Field Team</div>
+      <div class="live eyebrow" id="live"><span class="dot"></span><span id="liveTxt">Connecting…</span></div>
+    </div>
+    <div class="periods" role="group" aria-label="Period">
+      <button data-p="today" aria-pressed="true"><span>Today</span></button>
+      <button data-p="week" aria-pressed="false"><span>This week</span></button>
+      <button data-p="month" aria-pressed="false"><span>This month</span></button>
+    </div>
+  </header>
+
+  <div class="status" id="status" hidden></div>
+
+  <section class="panel allstar" aria-label="Top agents, all teams">
+    <div class="panel-h"><h2>Top agents · All teams</h2><span class="eyebrow" id="topPeriod">Today</span></div>
+    <div class="duo">
+      <div><h3>Apps</h3><ol class="board" id="topApps"></ol></div>
+      <div><h3>AP</h3><ol class="board" id="topAP"></ol></div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <div class="col">
+      <section class="panel pad" id="padPanel" aria-label="Log activity">
+        <div class="panel-h"><h2>Log activity</h2><span class="eyebrow num" id="todayLbl"></span></div>
+        <div class="whoami">
+          <label for="me">I'm</label>
+          <select id="me"><option value="">Pick your name…</option></select>
+          <button class="linkbtn" id="addToggle" type="button">New here? Add yourself</button>
+        </div>
+        <form class="addbox" id="addBox" hidden>
+          <div style="flex:1 1 100%"><b>New here?</b> <span class="note">Enter your name and pick your team to get on the board.</span></div>
+          <input type="text" id="newName" placeholder="First and last name" aria-label="Your name" required maxlength="60" autocomplete="name" style="flex:1 1 170px">
+          <select id="newTeam" aria-label="Your team" required style="flex:1 1 150px"><option value="">Pick your team…</option></select>
+          <button class="primary" type="submit">Get started</button>
+        </form>
+        <div class="logday">
+          <label for="logDay">Logging for</label>
+          <select id="logDay"></select>
+          <span class="warn" id="backNote" hidden></span>
+        </div>
+        <div class="taps">
+          <button class="tap" data-t="approaches" type="button"><span class="plus">+ Approach</span><span class="ct num" id="c-approaches">0</span><span class="sub dsub">today</span></button>
+          <button class="tap" data-t="presentations" type="button"><span class="plus">+ Presentation</span><span class="ct num" id="c-presentations">0</span><span class="sub dsub">today</span></button>
+          <button class="tap" data-t="inups" type="button"><span class="plus">+ In &amp; Up</span><span class="ct num" id="c-inups">0</span><span class="sub dsub">today</span></button>
+          <button class="tap sale" data-t="apps" type="button"><span class="plus">+ App</span><span class="ct num" id="c-apps">0</span><span class="sub" id="c-ap">$0 AP</span></button>
+          <button class="tap leads" data-t="leads" type="button"><span class="plus">+ Leads bought</span><span class="ct num" id="c-leads">0</span><span class="sub dsub">today</span></button>
+        </div>
+        <form class="inbox" id="saleBox" hidden>
+          <label for="prem"><b>Monthly premium</b></label>
+          <input type="number" id="prem" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 85">
+          <span class="note num" id="apPreview">= $0 AP</span>
+          <button class="primary" type="submit">Log app</button>
+          <button class="ghost" type="button" data-cancel>Cancel</button>
+        </form>
+        <form class="inbox" id="leadBox" hidden>
+          <label for="leadQty"><b>New-to-you leads bought</b></label>
+          <input type="number" id="leadQty" inputmode="numeric" min="1" step="1" placeholder="e.g. 25">
+          <button class="primary" type="submit">Log leads</button>
+          <button class="ghost" type="button" data-cancel>Cancel</button>
+        </form>
+        <div class="targets" id="targets" aria-label="Your targets">
+          <div class="tg"><div class="top"><span class="lab" id="lab-a">Approaches · today</span><span class="fig num" id="tg-a">0<small>/21</small></span></div><div class="meter" id="m-a"><i style="width:0"></i></div><div class="st" id="st-a">21 to go</div></div>
+          <div class="tg"><div class="top"><span class="lab" id="lab-p">Presentations · today</span><span class="fig num" id="tg-p">0<small>/5</small></span></div><div class="meter" id="m-p"><i style="width:0"></i></div><div class="st" id="st-p">5 to go</div></div>
+          <div class="tg"><div class="top"><span class="lab">New leads · this week</span><span class="fig num" id="tg-l">0<small>/30–50</small></span></div><div class="meter" id="m-l"><i style="width:0"></i><b style="left:60%"></b></div><div class="st" id="st-l">30 to the minimum</div></div>
+        </div>
+        <div class="padfoot">
+          <span class="toast" id="toast" role="status"></span>
+          <button class="linkbtn" id="undo" type="button" hidden>Undo last</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Leaderboard">
+        <div class="panel-h"><h2>Full leaderboard</h2><span class="eyebrow" id="lbPeriod">Today</span></div>
+        <div class="metrics" role="group" aria-label="Rank by">
+          <button data-m="points" aria-pressed="true">Points</button>
+          <button data-m="apps" aria-pressed="false">Apps</button>
+          <button data-m="ap" aria-pressed="false">AP</button>
+          <button data-m="presentations" aria-pressed="false">Presentations</button>
+          <button data-m="inups" aria-pressed="false">In &amp; Ups</button>
+          <button data-m="approaches" aria-pressed="false">Approaches</button>
+          <button data-m="leads" aria-pressed="false">Leads bought</button>
+        </div>
+        <div class="lbfilter">
+          <label for="teamFilter" class="note">Team</label>
+          <select id="teamFilter"><option value="all">All teams</option></select>
+        </div>
+        <ol class="board" id="board"><li class="empty" style="display:block">No activity yet. Pick your name above and tap + Approach after your first one.</li></ol>
+        <p class="note" style="margin:10px 0 0" id="ptsNote">Points: Approach 1 · Presentation 5 · In &amp; Up 5 · App 25. Leads bought don't score. A green tag means that rep hit 21 approaches and 5 presentations today.</p>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel" aria-label="Team pulse">
+        <div class="panel-h"><h2>Team pulse</h2><span class="eyebrow" id="pulsePeriod">Today</span></div>
+        <div class="tiles">
+          <div class="tile"><b class="num" id="t-approaches">0</b><span>Approaches</span></div>
+          <div class="tile"><b class="num" id="t-presentations">0</b><span>Presentations</span></div>
+          <div class="tile"><b class="num" id="t-inups">0</b><span>In &amp; Ups</span></div>
+          <div class="tile"><b class="num" id="t-apps">0</b><span>Apps</span></div>
+          <div class="tile ap"><b class="num" id="t-ap">$0</b><span>AP</span></div>
+          <div class="tile"><b class="num" id="t-leads">0</b><span>Leads bought</span></div>
+        </div>
+        <div class="funnel">
+          <span class="chip">Approach → presentation <b class="num" id="f1">–</b></span>
+          <span class="chip">Presentation → app <b class="num" id="f2">–</b></span>
+          <span class="chip">Reps at 21/5 today <b class="num" id="f3">0</b></span>
+          <span class="chip">Reps active <b class="num" id="f4">0</b></span>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Team standings">
+        <div class="panel-h"><h2>Team standings</h2></div>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Team</th><th>Reps</th><th>Appr.</th><th>Pres.</th><th>In &amp; Up</th><th>Apps</th><th>AP</th></tr></thead>
+            <tbody id="teams"><tr><td colspan="7" class="note" style="text-align:center">Teams show up once reps log activity.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Live feed">
+        <div class="panel-h"><h2>Live feed</h2><span class="eyebrow">Apps · In &amp; Ups · Goals hit</span></div>
+        <ul class="feed" id="feed"><li style="display:block" class="note">Every app, in &amp; up, and hit target lands here the second it's logged.</li></ul>
+      </section>
+
+    </div>
+  </div>
+
+  <section class="panel" id="loginPanel" aria-label="Admin sign in" hidden>
+    <div class="panel-h"><h2>Admin sign in</h2></div>
+    <form class="loginbox" id="loginForm">
+      <input type="email" id="adminEmail" placeholder="Email" autocomplete="username" required>
+      <input type="password" id="adminPass" placeholder="Password" autocomplete="current-password" required>
+      <button class="primary" type="submit">Sign in</button>
+      <span class="note" id="loginMsg"></span>
+    </form>
+  </section>
+
+  <section class="panel" id="adminPanel" aria-label="Admin" hidden>
+    <div class="panel-h"><h2>Admin</h2><span class="note">Only you see this</span></div>
+    <div class="admin-grid">
+      <div>
+        <h3>Teams</h3>
+        <p class="note" style="margin:0 0 6px">One team per line.</p>
+        <textarea id="teamsText" aria-label="Teams, one per line"></textarea>
+        <h3 style="margin-top:16px">Targets</h3>
+        <div class="frow"><label for="tA">Approaches per day</label><input type="number" id="tA" min="1"></div>
+        <div class="frow"><label for="tP">Presentations per day</label><input type="number" id="tP" min="1"></div>
+        <div class="frow"><label for="tLmin">Leads per week (min)</label><input type="number" id="tLmin" min="1"></div>
+        <div class="frow"><label for="tLmax">Leads per week (max)</label><input type="number" id="tLmax" min="1"></div>
+        <button class="primary" type="button" id="saveConfig">Save teams &amp; targets</button>
+      </div>
+      <div>
+        <h3>Fix a rep's numbers</h3>
+        <div class="frow"><select id="fixRep" aria-label="Rep" style="flex:1 1 160px"></select><input type="date" id="fixDay" aria-label="Day" style="background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:8px;color:var(--ink)"></div>
+        <div class="fixgrid">
+          <label>Approaches<input type="number" min="0" id="fx-approaches"></label>
+          <label>Presentations<input type="number" min="0" id="fx-presentations"></label>
+          <label>In &amp; Ups<input type="number" min="0" id="fx-inups"></label>
+          <label>Apps<input type="number" min="0" id="fx-apps"></label>
+          <label>AP ($)<input type="number" min="0" step="0.01" id="fx-ap"></label>
+          <label>Leads bought<input type="number" min="0" id="fx-leads"></label>
+        </div>
+        <button class="primary" type="button" id="saveFix">Save numbers</button>
+      </div>
+    </div>
+    <h3 style="margin:22px 0 8px;font-family:var(--display);font-size:18px;font-weight:800;font-style:italic;text-transform:uppercase;letter-spacing:.08em;color:var(--red-hot)">Roster</h3>
+    <p class="note" style="margin:0 0 6px">Rename, move teams, or hide a rep who's left. Hidden reps keep their past numbers.</p>
+    <div id="roster"></div>
+    <p class="note" id="adminMsg" style="margin-top:10px"></p>
+  </section>
+
+  <footer class="foot"><button class="linkbtn" id="adminLink" type="button">Admin</button><button class="linkbtn" id="signOut" type="button" hidden>Sign out</button></footer>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+(function(){
+const KINDS=["approaches","presentations","inups","apps","leads"];
+const PTS={approaches:1,presentations:5,inups:5,apps:25,leads:0};
+const LABEL={points:"pts",apps:"apps",ap:"AP",presentations:"presentations",inups:"in & ups",approaches:"approaches",leads:"leads"};
+const DEF_T={approachesDay:21,presentationsDay:5,leadsWeekMin:30,leadsWeekMax:50};
+const S={db:null,canWrite:true,canEdit:false,roster:new Map(),stats:new Map(),feed:[],teams:[],targets:{...DEF_T},period:"today",metric:"points",team:"all",me:"",pending:{},chains:{},undo:[]};
+const $=id=>document.getElementById(id);
+try{S.me=localStorage.getItem("v12-me")||""}catch(e){}
+try{S.team=localStorage.getItem("v12-team")||"all"}catch(e){}
+
+const pad=n=>String(n).padStart(2,"0");
+const dayKey=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+function periodKeys(p){
+  const now=new Date(),keys=[];let start=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  if(p==="week"){start.setDate(start.getDate()-((start.getDay()+6)%7))}
+  if(p==="month"){start.setDate(1)}
+  for(let d=new Date(start);d<=now;d.setDate(d.getDate()+1))keys.push(dayKey(d));
+  return keys;
+}
+const money=n=>"$"+Math.round(n).toLocaleString("en-US");
+const pct=(a,b)=>b>0?Math.round(a/b*100)+"%":"–";
+const blank=()=>({approaches:0,presentations:0,inups:0,apps:0,ap:0,leads:0});
+
+function dayVals(id,key){
+  const doc=S.stats.get(id),base=Object.assign(blank(),(doc&&doc.days&&doc.days[key])||{});
+  const p=S.pending[id+"|"+key];if(p){for(const k in p.d)base[k]=Math.max(0,(Number(base[k])||0)+p.d[k])}
+  return base;
+}
+function agg(id,keys){
+  const t=blank();for(const k of keys){const v=dayVals(id,k);for(const f in t)t[f]+=Number(v[f])||0}
+  t.points=KINDS.reduce((s,k)=>s+t[k]*PTS[k],0);return t;
+}
+const dayName=k=>{const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})};
+function logKey(){const t=dayKey(new Date());return S.logDay&&S.logDay!==t&&periodKeys("week").includes(S.logDay)?S.logDay:t}
+const hitToday=id=>{const v=dayVals(id,dayKey(new Date()));return v.approaches>=S.targets.approachesDay&&v.presentations>=S.targets.presentationsDay};
+const allIds=()=>[...new Set([...S.roster.keys(),...S.stats.keys()])];
+const nameOf=id=>{const r=S.roster.get(id);return r?r.name:"Former rep"};
+const teamOf=id=>{const r=S.roster.get(id);return (r&&r.team)||"Unassigned"};
+
+function meter(el,val,fullAt,markAt,hit){
+  el.classList.toggle("hit",hit);el.querySelector("i").style.width=Math.min(100,val/fullAt*100)+"%";
+  const b=el.querySelector("b");if(b)b.style.left=Math.min(100,markAt/fullAt*100)+"%";
+}
+function render(){
+  const T=S.targets,keys=periodKeys(S.period),label={today:"Today",week:"This week",month:"This month"}[S.period];
+  $("lbPeriod").textContent=label;$("pulsePeriod").textContent=label;
+  $("todayLbl").textContent=new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+
+  const sel=$("me"),active=[...S.roster.entries()].filter(([,r])=>!r.hidden).sort((a,b)=>a[1].name.localeCompare(b[1].name));
+  const sig=active.map(([id,r])=>id+r.name+r.team).join("|");
+  if(sel.dataset.sig!==sig){sel.textContent="";const o=document.createElement("option");o.value="";o.textContent=active.length?"Pick your name…":"No reps yet — add one";sel.appendChild(o);
+    for(const [id,r] of active){const op=document.createElement("option");op.value=id;op.textContent=r.name+(r.team?" · "+r.team:"");sel.appendChild(op)}sel.dataset.sig=sig}
+  if(S.me&&!S.roster.has(S.me)&&S.roster.size)S.me="";
+  sel.value=S.me;
+
+  const today=dayKey(new Date()),lk=logKey(),back=lk!==today,mine=S.me?dayVals(S.me,lk):blank();
+  const ld=$("logDay"),wkeys=periodKeys("week").slice().reverse(),lsig=wkeys.join("|");
+  if(ld.dataset.sig!==lsig){ld.textContent="";for(const k of wkeys){const o=document.createElement("option");o.value=k;o.textContent=k===today?"Today ("+dayName(k)+")":dayName(k);ld.appendChild(o)}ld.dataset.sig=lsig}
+  ld.value=lk;ld.classList.toggle("back",back);
+  $("backNote").hidden=!back;$("backNote").textContent=back?"Backlogging. Taps count toward "+dayName(lk)+".":"";
+  const dl=back?dayName(lk).split(",")[0]:"today";
+  document.querySelectorAll(".dsub").forEach(e=>e.textContent=dl);
+  $("lab-a").textContent="Approaches · "+dl;$("lab-p").textContent="Presentations · "+dl;
+  for(const k of KINDS)$("c-"+k).textContent=mine[k];
+  $("c-ap").textContent=money(mine.ap)+" AP";
+  document.querySelectorAll(".tap").forEach(b=>b.disabled=!S.me||!S.canWrite);
+
+  // personal targets
+  const wk=S.me?agg(S.me,periodKeys("week")):blank();
+  const aH=mine.approaches>=T.approachesDay,pH=mine.presentations>=T.presentationsDay,lMin=wk.leads>=T.leadsWeekMin,lMax=wk.leads>=T.leadsWeekMax;
+  $("tg-a").innerHTML=mine.approaches+"<small>/"+T.approachesDay+"</small>";
+  $("tg-p").innerHTML=mine.presentations+"<small>/"+T.presentationsDay+"</small>";
+  $("tg-l").innerHTML=wk.leads+"<small>/"+T.leadsWeekMin+"–"+T.leadsWeekMax+"</small>";
+  meter($("m-a"),mine.approaches,T.approachesDay,0,aH);meter($("m-p"),mine.presentations,T.presentationsDay,0,pH);
+  meter($("m-l"),wk.leads,T.leadsWeekMax,T.leadsWeekMin,lMin);
+  const st=(el,hit,txt)=>{el.textContent=txt;el.classList.toggle("hit",hit)};
+  st($("st-a"),aH,aH?"Target hit":(T.approachesDay-mine.approaches)+" to go");
+  st($("st-p"),pH,pH?"Target hit":(T.presentationsDay-mine.presentations)+" to go");
+  st($("st-l"),lMin,lMax?"Top of the range":lMin?"In range · "+(T.leadsWeekMax-wk.leads)+" to the top":(T.leadsWeekMin-wk.leads)+" to the minimum");
+  $("ptsNote").textContent="Points: Approach 1 · Presentation 5 · In & Up 5 · App 25. Leads bought don't score. A green tag means that rep hit "+T.approachesDay+" approaches and "+T.presentationsDay+" presentations today.";
+
+  // teams
+  const teamSet=new Set(S.teams);for(const [,r] of S.roster)if(r.team)teamSet.add(r.team);
+  const teamArr=[...teamSet].sort();
+  const nt=$("newTeam");if(nt.dataset.sig!==teamArr.join("|")){const keep=nt.value;nt.textContent="";const o0=document.createElement("option");o0.value="";o0.textContent="Pick your team…";nt.appendChild(o0);teamArr.forEach(t=>{const o=document.createElement("option");o.value=t;o.textContent=t;nt.appendChild(o)});nt.value=keep;nt.dataset.sig=teamArr.join("|")}
+  if(!S.me&&S.canWrite&&!S.addDismissed)$("addBox").hidden=false;
+  const tf=$("teamFilter"),tsig=teamArr.join("|");
+  if(tf.dataset.sig!==tsig){tf.textContent="";const a=document.createElement("option");a.value="all";a.textContent="All teams";tf.appendChild(a);teamArr.forEach(t=>{const o=document.createElement("option");o.value=t;o.textContent=t;tf.appendChild(o)});tf.dataset.sig=tsig}
+  if(S.team!=="all"&&!teamSet.has(S.team))S.team="all";tf.value=S.team;
+
+  const rows=allIds().map(id=>({id,name:nameOf(id),team:teamOf(id),hit:hitToday(id),...agg(id,keys)}));
+  const isActive=r=>KINDS.some(k=>r[k]>0);
+  const tot=blank();let act=0,hits=0;
+  for(const r of rows){for(const f in tot)tot[f]+=r[f];if(isActive(r))act++;if(r.hit)hits++}
+  for(const k of KINDS)$("t-"+k).textContent=tot[k].toLocaleString();
+  $("t-ap").textContent=money(tot.ap);
+  $("f1").textContent=pct(tot.presentations,tot.approaches);$("f2").textContent=pct(tot.apps,tot.presentations);$("f3").textContent=hits;$("f4").textContent=act;
+
+  const m=S.metric;
+  const lb=rows.filter(r=>isActive(r)&&(S.team==="all"||r.team===S.team)).sort((a,b)=>b[m]-a[m]||b.points-a.points||a.name.localeCompare(b.name));
+  const board=$("board");board.textContent="";
+  if(!lb.length){const li=document.createElement("li");li.className="empty";li.style.display="block";li.textContent=S.roster.size?"Nobody's on the board yet for this stretch. First approach takes the lead.":"No reps yet. Add yourself above to put the first name on the board.";board.appendChild(li)}
+  const top=lb.length?Math.max(1,lb[0][m]):1;let last=null,rank=0;
+  lb.forEach((r,i)=>{
+    if(r[m]!==last){rank=i+1;last=r[m]}
+    const li=document.createElement("li");li.className=(rank<=3?"r"+rank:"")+(r.id===S.me?" me":"");
+    const rk=document.createElement("div");rk.className="rank num";rk.textContent=rank;
+    const who=document.createElement("div");who.className="who";
+    const n=document.createElement("div");n.className="n";const ns=document.createElement("span");ns.textContent=r.name;n.appendChild(ns);
+    if(r.hit){const p=document.createElement("span");p.className="hitpill";p.textContent=S.targets.approachesDay+"/"+S.targets.presentationsDay+" hit";n.appendChild(p)}
+    const t=document.createElement("div");t.className="t num";t.textContent=r.team+" · "+r.approaches+" appr · "+r.presentations+" pres · "+r.inups+" in&up · "+r.apps+" apps · "+r.leads+" leads";
+    const bar=document.createElement("div");bar.className="bar";const bi=document.createElement("i");bi.style.width=Math.max(2,r[m]/top*100)+"%";bar.appendChild(bi);
+    who.append(n,t,bar);
+    const v=document.createElement("div");v.className="val";const vb=document.createElement("b");vb.className="num";vb.textContent=m==="ap"?money(r.ap):r[m].toLocaleString();
+    const vs=document.createElement("small");vs.textContent=LABEL[m];v.append(vb,vs);
+    li.append(rk,who,v);board.appendChild(li);
+  });
+
+  const tm=new Map();
+  for(const r of rows){if(!isActive(r))continue;const t=tm.get(r.team)||{reps:0,...blank()};t.reps++;for(const f in blank())t[f]+=r[f];tm.set(r.team,t)}
+  const tb=$("teams");tb.textContent="";
+  const tl=[...tm.entries()].sort((a,b)=>b[1].ap-a[1].ap||b[1].apps-a[1].apps||b[1].presentations-a[1].presentations||b[1].approaches-a[1].approaches);
+  if(!tl.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=7;td.className="note";td.style.textAlign="center";td.textContent="Teams show up once reps log activity.";tr.appendChild(td);tb.appendChild(tr)}
+  for(const [name,t] of tl){const tr=document.createElement("tr");[name,t.reps,t.approaches.toLocaleString(),t.presentations,t.inups,t.apps,money(t.ap)].forEach((v,i)=>{const td=document.createElement("td");if(!i)td.className="tn";td.textContent=v;tr.appendChild(td)});tb.appendChild(tr)}
+
+  renderTop(rows,label);renderFeed();renderRoster();
+}
+function renderTop(rows,label){
+  $("topPeriod").textContent=label;
+  for(const [elId,m] of [["topApps","apps"],["topAP","ap"]]){
+    const ol=$(elId);ol.textContent="";
+    const list=rows.filter(r=>r[m]>0).sort((a,b)=>b[m]-a[m]||b.ap-a.ap||a.name.localeCompare(b.name)).slice(0,10);
+    if(!list.length){const li=document.createElement("li");li.className="empty";li.style.display="block";li.textContent=m==="apps"?"No apps written yet. First one takes the top spot.":"No AP on the board yet.";ol.appendChild(li);continue}
+    const top=Math.max(1,list[0][m]);let last=null,rank=0;
+    list.forEach((r,i)=>{
+      if(r[m]!==last){rank=i+1;last=r[m]}
+      const li=document.createElement("li");li.className=(rank<=3?"r"+rank:"")+(r.id===S.me?" me":"");
+      const rk=document.createElement("div");rk.className="rank num";rk.textContent=rank;
+      const who=document.createElement("div");who.className="who";
+      const n=document.createElement("div");n.className="n";const ns=document.createElement("span");ns.textContent=r.name;n.appendChild(ns);
+      const t=document.createElement("div");t.className="t num";t.textContent=r.team+" · "+(m==="apps"?money(r.ap)+" AP":r.apps+" apps");
+      const bar=document.createElement("div");bar.className="bar";const bi=document.createElement("i");bi.style.width=Math.max(2,r[m]/top*100)+"%";bar.appendChild(bi);
+      who.append(n,t,bar);
+      const v=document.createElement("div");v.className="val";const vb=document.createElement("b");vb.className="num";vb.textContent=m==="ap"?money(r.ap):r.apps;
+      const vs=document.createElement("small");vs.textContent=m==="ap"?"AP":"apps";v.append(vb,vs);
+      li.append(rk,who,v);ol.appendChild(li);
+    });
+  }
+}
+function ago(ts){const s=Math.max(0,(Date.now()-ts)/1000);if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return Math.floor(s/86400)+"d ago"}
+function renderFeed(){
+  const ul=$("feed");ul.textContent="";
+  if(!S.feed.length){const li=document.createElement("li");li.className="note";li.style.display="block";li.textContent="Every app, in & up, and hit target lands here the second it's logged.";ul.appendChild(li);return}
+  for(const f of S.feed){
+    const li=document.createElement("li"),b=document.createElement("span");
+    b.className="badge "+f.type;b.textContent={apps:"App",inups:"In & Up",goal:"Target"}[f.type]||"Activity";
+    const tx=document.createElement("div");tx.className="txt";const nm=document.createElement("b");nm.textContent=nameOf(f.agentId);
+    const msg=f.type==="apps"?" wrote an app"+(f.ap?" · "+money(f.ap)+" AP":""):f.type==="inups"?" got an in & up":f.type==="goal"?" hit "+(f.what==="presentations"?f.n+" presentations":f.n+" approaches")+" for the day":"";
+    tx.append(nm,document.createTextNode(msg+(f.day&&typeof f.day==="string"&&/^\d{4}-\d\d-\d\d$/.test(f.day)?" · backlogged for "+dayName(f.day).split(",")[0]:"")));
+    const a=document.createElement("span");a.className="ago";a.textContent=ago(f.ts);li.append(b,tx,a);ul.appendChild(li);
+  }
+}
+function renderRoster(){
+  $("adminPanel").hidden=!S.canEdit;if(!S.canEdit)return;
+  const box=$("roster");box.textContent="";
+  const teams=S.teamList||[];
+  const list=[...S.roster.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name));
+  if(!list.length){const p=document.createElement("p");p.className="note";p.textContent="No reps signed up yet.";box.appendChild(p)}
+  for(const [id,r] of list){
+    const row=document.createElement("div");row.className="rrow";
+    const nm=document.createElement("input");nm.type="text";nm.value=r.name;nm.setAttribute("aria-label","Name");
+    const tm=document.createElement("select");tm.setAttribute("aria-label","Team");
+    const opts=[...new Set(["",...teams,r.team||""])];
+    for(const t of opts){const o=document.createElement("option");o.value=t;o.textContent=t||"Unassigned";tm.appendChild(o)}
+    tm.value=r.team||"";
+    const save=document.createElement("button");save.className="ghost";save.type="button";save.textContent="Save";
+    save.onclick=async()=>{const n=nm.value.trim().replace(/\s+/g," ");if(!n)return;try{await S.db.doc("roster/"+id).update({name:n,team:tm.value});adminMsg("Saved "+n+".")}catch(e){adminMsg("Couldn't save. Make sure you're signed in as admin.")}};
+    const hide=document.createElement("button");hide.className="ghost";hide.type="button";hide.textContent=r.hidden?"Show":"Hide";
+    hide.onclick=async()=>{try{await S.db.doc("roster/"+id).update({hidden:!r.hidden})}catch(e){adminMsg("Couldn't update. Make sure you're signed in as admin.")}};
+    row.append(nm,tm,save,hide);box.appendChild(row)}
+  const fr=$("fixRep"),sig=list.map(([id,r])=>id+r.name).join("|");
+  if(fr.dataset.sig!==sig){const keep=fr.value;fr.textContent="";const o0=document.createElement("option");o0.value="";o0.textContent="Pick a rep…";fr.appendChild(o0);
+    for(const [id,r] of list){const o=document.createElement("option");o.value=id;o.textContent=r.name;fr.appendChild(o)}fr.value=keep;fr.dataset.sig=sig}
+  if(!S.cfgLoaded){S.cfgLoaded=true;$("teamsText").value=teams.join("\n");$("tA").value=S.targets.approachesDay;$("tP").value=S.targets.presentationsDay;$("tLmin").value=S.targets.leadsWeekMin;$("tLmax").value=S.targets.leadsWeekMax}
+}
+function adminMsg(m){$("adminMsg").textContent=m}
+function loadFix(){const id=$("fixRep").value,k=$("fixDay").value;if(!id||!k)return;const v=dayVals(id,k);for(const f of ["approaches","presentations","inups","apps","ap","leads"])$("fx-"+f).value=v[f]||0}
+let toastT;
+function flash(msg,bad){const t=$("toast");t.textContent=msg;t.style.color=bad?"var(--red-hot)":"var(--good)";clearTimeout(toastT);toastT=setTimeout(()=>t.textContent="",3000)}
+
+function bump(id,deltas,key){
+  key=key||dayKey(new Date());const pk=id+"|"+key;
+  const p=S.pending[pk]||(S.pending[pk]={id,key,d:{}});
+  for(const k in deltas)p.d[k]=(p.d[k]||0)+deltas[k];
+  clearTimeout(p.timer);p.timer=setTimeout(()=>flush(pk),500);render();
+}
+function flush(pk){
+  const first=S.pending[pk];if(!first)return;const id=first.id;
+  S.chains[id]=(S.chains[id]||Promise.resolve()).then(async()=>{
+    const cur=S.pending[pk];if(!cur)return;
+    const v=dayVals(id,cur.key);delete S.pending[pk];
+    const day={};for(const k of KINDS)day[k]=v[k];day.ap=Math.round(v.ap*100)/100;
+    const ref=S.db.doc("stats/"+id),body={days:{[cur.key]:day},updatedAt:Date.now()};
+    try{await ref.set(body,{merge:true})}
+    catch(e){
+      if(e&&e.code==="unavailable"){await new Promise(r=>setTimeout(r,800+Math.random()*700));try{await ref.set(body,{merge:true});return}catch(_){}}
+      flash("That tap didn't save. Check your signal and tap again.",true);render();
+    }
+  });
+}
+async function addFeed(doc){
+  try{const ref=await S.db.collection("feed").add({...doc,ts:Date.now()});if(Math.random()<.25)pruneFeed();return ref.id}catch(e){return null}
+}
+async function pruneFeed(){try{const old=await S.db.collection("feed").where("ts","<",Date.now()-3*86400000).limit(25).get();for(const d of old.docs)await S.db.doc("feed/"+d.id).delete()}catch(e){}}
+
+async function logTap(kind,amount){
+  if(!S.me){flash("Pick your name first.",true);return}
+  const me=S.me,key=logKey(),back=key!==dayKey(new Date()),before=dayVals(me,key);
+  const d={[kind]:kind==="leads"?amount:1};if(kind==="apps")d.ap=amount||0;
+  bump(me,d,key);
+  const entry={agentId:me,d,key,feeds:[]};S.undo.push(entry);if(S.undo.length>20)S.undo.shift();$("undo").hidden=false;
+  flash({approaches:"Approach logged",presentations:"Presentation logged",inups:"In & up logged. Go write it.",apps:"App logged"+(amount?" · "+money(amount)+" AP":"")+". Huge.",leads:amount+" leads logged"}[kind]+(back?" for "+dayName(key).split(",")[0]:""));
+  if(kind==="apps"||kind==="inups"){const fd={agentId:me,type:kind,ap:kind==="apps"?amount||0:0};if(back)fd.day=key;const f=await addFeed(fd);if(f)entry.feeds.push(f)}
+  const goal={approaches:S.targets.approachesDay,presentations:S.targets.presentationsDay}[kind];
+  if(!back&&goal&&before[kind]+1===goal){const f=await addFeed({agentId:me,type:"goal",what:kind,n:goal});if(f)entry.feeds.push(f)}
+}
+
+document.querySelectorAll(".periods button").forEach(b=>b.onclick=()=>{S.period=b.dataset.p;document.querySelectorAll(".periods button").forEach(x=>x.setAttribute("aria-pressed",x===b));render()});
+document.querySelectorAll(".metrics button").forEach(b=>b.onclick=()=>{S.metric=b.dataset.m;document.querySelectorAll(".metrics button").forEach(x=>x.setAttribute("aria-pressed",x===b));render()});
+$("teamFilter").onchange=e=>{S.team=e.target.value;try{localStorage.setItem("v12-team",S.team)}catch(_){}render()};
+$("logDay").onchange=e=>{S.logDay=e.target.value;render()};
+$("me").onchange=e=>{S.me=e.target.value;if(S.me){S.addDismissed=true;$("addBox").hidden=true}try{localStorage.setItem("v12-me",S.me)}catch(_){}render()};
+$("addToggle").onclick=()=>{const b=$("addBox");b.hidden=!b.hidden;S.addDismissed=b.hidden;if(!b.hidden)$("newName").focus()};
+$("addBox").onsubmit=async e=>{
+  e.preventDefault();if(!S.db)return;
+  const name=$("newName").value.trim().replace(/\s+/g," "),team=$("newTeam").value;if(!name){flash("Enter your name.",true);return}if(!team){flash("Pick your team.",true);return}
+  const dup=[...S.roster.entries()].find(([,r])=>r.name.toLowerCase()===name.toLowerCase());
+  if(dup){S.addDismissed=true;S.me=dup[0];try{localStorage.setItem("v12-me",S.me)}catch(_){}$("addBox").hidden=true;render();flash(name+" is already on the roster. Selected.");return}
+  try{const ref=await S.db.collection("roster").add({name,team,createdAt:Date.now()});S.me=ref.id;S.addDismissed=true;try{localStorage.setItem("v12-me",S.me)}catch(_){}
+    $("newName").value="";$("newTeam").value="";$("addBox").hidden=true;flash("You're on the board, "+name.split(" ")[0]+". Get after it.");render()}
+  catch(err){flash("Couldn't add you. Check your signal and try again.",true)}
+};
+document.querySelectorAll(".tap").forEach(b=>b.onclick=()=>{
+  const k=b.dataset.t;$("saleBox").hidden=true;$("leadBox").hidden=true;
+  if(k==="apps"){$("saleBox").hidden=false;$("prem").value="";$("apPreview").textContent="= $0 AP";$("prem").focus();return}
+  if(k==="leads"){$("leadBox").hidden=false;$("leadQty").value="";$("leadQty").focus();return}
+  logTap(k);
+});
+$("prem").oninput=()=>{$("apPreview").textContent="= "+money((parseFloat($("prem").value)||0)*12)+" AP"};
+$("saleBox").onsubmit=e=>{e.preventDefault();const mp=parseFloat($("prem").value)||0;$("saleBox").hidden=true;logTap("apps",Math.round(mp*12*100)/100)};
+$("leadBox").onsubmit=e=>{e.preventDefault();const q=Math.floor(parseFloat($("leadQty").value)||0);if(q<1){flash("Enter how many leads you bought.",true);return}$("leadBox").hidden=true;logTap("leads",q)};
+document.querySelectorAll("[data-cancel]").forEach(b=>b.onclick=()=>{b.closest("form").hidden=true});
+$("undo").onclick=async()=>{
+  const u=S.undo.pop();if(!u)return;$("undo").hidden=!S.undo.length;
+  const neg={};for(const k in u.d)neg[k]=-u.d[k];bump(u.agentId,neg,u.key);
+  for(const f of u.feeds){try{await S.db.doc("feed/"+f).delete()}catch(e){}}
+  flash("Undone");
+};
+S._day=dayKey(new Date());
+setInterval(()=>{renderFeed();const d=dayKey(new Date());if(d!==S._day){S._day=d;S.logDay="";render()}},30000);
+render();
+
+function setLive(on,txt){$("live").classList.toggle("on",on);$("liveTxt").textContent=txt}
+function showStatus(msg){const s=$("status");s.textContent=msg;s.hidden=!msg}
+const ADMIN_EMAIL=(window.V12_ADMIN_EMAIL||"").toLowerCase();
+$("adminLink").onclick=()=>{const p=$("loginPanel");p.hidden=!p.hidden;if(!p.hidden){p.scrollIntoView({behavior:"smooth"});$("adminEmail").focus()}};
+$("fixRep").onchange=loadFix;$("fixDay").onchange=loadFix;
+$("fixDay").value=dayKey(new Date());
+(function start(){
+  if(!window.firebase||!window.V12_FIREBASE_CONFIG||!window.V12_FIREBASE_CONFIG.apiKey||String(window.V12_FIREBASE_CONFIG.apiKey).indexOf("PASTE")===0){
+    setLive(false,"Not connected");showStatus("This board isn't connected to its database yet. Add the Firebase settings to firebase-config.js.");document.querySelectorAll(".tap").forEach(b=>b.disabled=true);return}
+  firebase.initializeApp(window.V12_FIREBASE_CONFIG);
+  const auth=firebase.auth(),db=firebase.firestore();S.db=db;
+  auth.onAuthStateChanged(u=>{
+    if(!u){auth.signInAnonymously().catch(()=>showStatus("Couldn't connect. Check your signal and reload."));return}
+    S.canEdit=!u.isAnonymous&&!!u.email&&u.email.toLowerCase()===ADMIN_EMAIL;
+    $("signOut").hidden=u.isAnonymous;$("adminLink").hidden=S.canEdit;if(S.canEdit)$("loginPanel").hidden=true;
+    if(!u.isAnonymous&&!S.canEdit)showStatus("That account isn't the board admin.");
+    S.cfgLoaded=false;render();
+  });
+  $("loginForm").onsubmit=async e=>{e.preventDefault();$("loginMsg").textContent="Signing in…";
+    try{await auth.signInWithEmailAndPassword($("adminEmail").value.trim(),$("adminPass").value);$("adminPass").value="";$("loginMsg").textContent=""}
+    catch(err){$("loginMsg").textContent="Wrong email or password."}};
+  $("signOut").onclick=()=>auth.signOut();
+  $("saveConfig").onclick=async()=>{
+    const teams=[...new Set($("teamsText").value.split("\n").map(t=>t.trim()).filter(Boolean))];
+    const n=id=>Math.max(1,Math.round(Number($(id).value)||0));
+    const targets={approachesDay:n("tA"),presentationsDay:n("tP"),leadsWeekMin:n("tLmin"),leadsWeekMax:Math.max(n("tLmin"),n("tLmax"))};
+    try{await db.doc("config/main").set({teams,targets},{merge:true});S.cfgLoaded=false;adminMsg("Teams and targets saved. Everyone sees them now.")}catch(e){adminMsg("Couldn't save. Make sure you're signed in as admin.")}};
+  $("saveFix").onclick=async()=>{
+    const id=$("fixRep").value,k=$("fixDay").value;if(!id||!k){adminMsg("Pick a rep and a day first.");return}
+    const day={};for(const f of ["approaches","presentations","inups","apps","leads"])day[f]=Math.max(0,Math.round(Number($("fx-"+f).value)||0));day.ap=Math.max(0,Math.round((Number($("fx-ap").value)||0)*100)/100);
+    try{await db.doc("stats/"+id).set({days:{[k]:day},updatedAt:Date.now()},{merge:true});adminMsg("Numbers saved for "+nameOf(id)+" on "+dayName(k)+".")}catch(e){adminMsg("Couldn't save. Make sure you're signed in as admin.")}};
+  const fail=()=>{setLive(false,"Reconnecting…")};
+  let got=0;const ready=()=>{if(++got>=3)setLive(true,"Live")};
+  db.collection("roster").onSnapshot(s=>{S.roster=new Map(s.docs.map(d=>[d.id,d.data()]));if(!s.metadata.fromCache)ready();render()},fail);
+  db.collection("stats").onSnapshot(s=>{S.stats=new Map(s.docs.map(d=>[d.id,d.data()]));if(!s.metadata.fromCache)ready();render()},fail);
+  db.collection("feed").orderBy("ts","desc").limit(40).onSnapshot(s=>{S.feed=s.docs.map(d=>Object.assign({id:d.id},d.data()));if(!s.metadata.fromCache)ready();renderFeed()},fail);
+  db.doc("config/main").onSnapshot(s=>{const d=s.exists?s.data():null;
+    S.teams=d&&Array.isArray(d.teams)?d.teams.filter(t=>typeof t==="string"):(window.V12_DEFAULT_TEAMS||[]);S.teamList=S.teams;
+    const t=(d&&d.targets)||{};S.targets={...DEF_T};for(const k in DEF_T)if(Number(t[k])>0)S.targets[k]=Number(t[k]);
+    render()},()=>{});
+})();
+})();
+</script>
+</body>
+</html>

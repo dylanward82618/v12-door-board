@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// V12 Door Board access rules.
+// - Anyone with the link can view the board.
+// - Agents are signed in automatically (anonymously), so they can sign up and log activity without an account.
+// - Only the admin email can change teams, targets, or edit/hide reps.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.email == 'dylanward82618@gmail.com';
+    }
+
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /roster/{rep} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 60
+        && request.resource.data.team is string
+        && request.resource.data.team.size() <= 40;
+      allow update, delete: if isAdmin();
+    }
+
+    match /stats/{rep} {
+      allow read: if true;
+      allow write: if signedIn() && request.resource.data.days is map;
+    }
+
+    match /feed/{item} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.ts is number;
+      allow delete: if signedIn();
+    }
+  }
+}
