@@ -757,13 +757,16 @@ if(TV){
   const order=["today","week"];let pi=0;
   setInterval(()=>{pi=(pi+1)%order.length;S.period=order[pi];document.querySelectorAll(".periods button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.p===S.period));render()},45000);
   let lock=null;const wake=async()=>{try{if("wakeLock" in navigator&&document.visibilityState==="visible")lock=await navigator.wakeLock.request("screen")}catch(e){}};wake();document.addEventListener("visibilitychange",wake);
-  setInterval(()=>{if(Date.now()-BOOT>6*3600000)location.reload()},600000);
+  // Safety net for TVs and mirrored screens: reload every 10 minutes so the board can never sit stale for long.
+  setInterval(()=>{location.reload()},600000);
+  addEventListener("online",()=>location.reload());
 }
 S._day=dayKey(new Date());
 setInterval(()=>{renderFeed();const d=dayKey(new Date());if(d!==S._day){S._day=d;S.logDay="";render()}},30000);
 render();
 
 function setLive(on,txt){$("live").classList.toggle("on",on);$("liveTxt").textContent=txt}
+function synced(){S.lastSync=new Date();if($("live").classList.contains("on"))$("liveTxt").textContent="Live · updated "+S.lastSync.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",second:"2-digit"})}
 function showStatus(msg){const s=$("status");s.textContent=msg;s.hidden=!msg}
 const ADMIN_EMAIL=(window.V12_ADMIN_EMAIL||"").toLowerCase();
 $("adminLink").onclick=()=>{const p=$("loginPanel");p.hidden=!p.hidden;if(!p.hidden){p.scrollIntoView({behavior:"smooth"});$("adminEmail").focus()}};
@@ -773,7 +776,7 @@ $("fixDay").value=dayKey(new Date());
   if(!window.firebase||!window.V12_FIREBASE_CONFIG||!window.V12_FIREBASE_CONFIG.apiKey||String(window.V12_FIREBASE_CONFIG.apiKey).indexOf("PASTE")===0){
     setLive(false,"Not connected");showStatus("This board isn't connected to its database yet. Add the Firebase settings to firebase-config.js.");document.querySelectorAll(".tap").forEach(b=>b.disabled=true);return}
   firebase.initializeApp(window.V12_FIREBASE_CONFIG);
-  const auth=firebase.auth(),db=firebase.firestore();S.db=db;
+  const auth=firebase.auth(),db=firebase.firestore();try{db.settings({experimentalAutoDetectLongPolling:true,merge:true})}catch(e){}S.db=db;
   auth.onAuthStateChanged(u=>{
     if(!u){auth.signInAnonymously().catch(()=>showStatus("Couldn't connect. Check your signal and reload."));return}
     S.canEdit=!u.isAnonymous&&!!u.email&&u.email.toLowerCase()===ADMIN_EMAIL;
@@ -795,10 +798,10 @@ $("fixDay").value=dayKey(new Date());
     const day={};for(const f of ["approaches","presentations","inups","apps","leads"])day[f]=Math.max(0,Math.round(Number($("fx-"+f).value)||0));day.ap=Math.max(0,Math.round((Number($("fx-ap").value)||0)*100)/100);
     try{await db.doc("stats/"+id).set({days:{[k]:day},updatedAt:Date.now()},{merge:true});adminMsg("Numbers saved for "+nameOf(id)+" on "+dayName(k)+".")}catch(e){adminMsg("Couldn't save. Make sure you're signed in as admin.")}};
   const fail=()=>{setLive(false,"Reconnecting…")};
-  let got=0;const ready=()=>{if(++got>=3)setLive(true,"Live")};
-  db.collection("roster").onSnapshot(s=>{S.roster=new Map(s.docs.map(d=>[d.id,d.data()]));if(!s.metadata.fromCache)ready();render()},fail);
-  db.collection("stats").onSnapshot(s=>{S.stats=new Map(s.docs.map(d=>[d.id,d.data()]));if(!s.metadata.fromCache)ready();render()},fail);
-  db.collection("feed").orderBy("ts","desc").limit(40).onSnapshot(s=>{S.feed=s.docs.map(d=>Object.assign({id:d.id},d.data()));if(!s.metadata.fromCache)ready();renderFeed();
+  let got=0;const ready=()=>{if(++got>=3){setLive(true,"Live");synced()}};
+  db.collection("roster").onSnapshot(s=>{S.roster=new Map(s.docs.map(d=>[d.id,d.data()]));if(!s.metadata.fromCache)ready();render();synced()},fail);
+  db.collection("stats").onSnapshot(s=>{S.stats=new Map(s.docs.map(d=>[d.id,d.data()]));if(!s.metadata.fromCache)ready();render();synced()},fail);
+  db.collection("feed").orderBy("ts","desc").limit(40).onSnapshot(s=>{S.feed=s.docs.map(d=>Object.assign({id:d.id},d.data()));if(!s.metadata.fromCache)ready();renderFeed();synced();
     if(TV)for(const c of s.docChanges()){const f=c.doc.data();if(c.type==="added"&&f&&f.type==="apps"&&Number(f.ts)>BOOT)tvAlert(f)}},fail);
   db.doc("config/main").onSnapshot(s=>{const d=s.exists?s.data():null;
     S.teams=d&&Array.isArray(d.teams)?d.teams.filter(t=>typeof t==="string"):(window.V12_DEFAULT_TEAMS||[]);S.teamList=S.teams;
