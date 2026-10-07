@@ -190,6 +190,15 @@ table.coach tbody tr:first-child td.tn::before{content:none}
 .pill.prog{background:var(--panel-2);color:var(--ink);border:1px solid var(--line)}
 .pill.hit{background:var(--good-soft);color:var(--good)}
 /* ---- TV mode (?tv) ---- */
+body.tv #fullLb{grid-area:top}
+body.tv #fullLb .metrics,body.tv #fullLb .lbfilter,body.tv #ptsNote{display:none}
+body.tv #fullLb .panel-h h2{font-size:40px}
+body.tv #fullLb ol.board li:nth-child(n+16){display:none}
+body.tv .tvhide{display:none!important}
+.tvdots{display:none}
+body.tv .tvdots{display:flex;gap:6px;justify-content:center;margin-top:10px}
+body.tv .tvdots i{width:28px;height:4px;background:var(--line)}
+body.tv .tvdots i.on{background:var(--red)}
 .tvclock{display:none}
 body.tv{cursor:none;padding-bottom:16px}
 body.tv .wrap{max-width:none;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);grid-template-areas:"head head" "top side";gap:20px;align-items:start}
@@ -320,8 +329,8 @@ footer.foot{display:flex;justify-content:center;gap:14px;padding-block:8px;color
         </div>
       </section>
 
-      <section class="panel" aria-label="Leaderboard">
-        <div class="panel-h"><h2>Full leaderboard</h2><span class="eyebrow" id="lbPeriod">Today</span></div>
+      <section class="panel" id="fullLb" aria-label="Leaderboard">
+        <div class="panel-h"><h2 id="fullLbTitle">Full leaderboard</h2><span class="eyebrow" id="lbPeriod">Today</span></div>
         <div class="metrics" role="group" aria-label="Rank by">
           <button data-m="points" aria-pressed="true">Points</button>
           <button data-m="apps" aria-pressed="false">Apps</button>
@@ -751,11 +760,22 @@ function nextAlert(){const f=alertQ.shift();if(!f){alertBusy=false;return}alertB
   $("tvWho").textContent=nameOf(f.agentId);$("tvAmt").textContent=f.ap?money(f.ap)+" AP":"";
   const el=$("tvAlert");el.classList.add("on");setTimeout(()=>{el.classList.remove("on");setTimeout(nextAlert,600)},7000)}
 if(TV){
+  // Left side rotates: Top Agents (Apps + AP) -> Full leaderboard by points, apps, AP, presentations, approaches
+  const lb=$("fullLb"),top=document.querySelector(".allstar"),grid=document.querySelector(".grid");
+  grid.parentNode.insertBefore(lb,grid);S.team="all";
+  const views=[null,"points","apps","ap","presentations","approaches"];
+  const VL={points:"Points",apps:"Apps",ap:"AP",presentations:"Presentations",approaches:"Approaches"};
+  const dots=document.createElement("div");dots.className="tvdots";views.forEach(()=>dots.appendChild(document.createElement("i")));
+  let vi=0;
+  const showView=()=>{const v=views[vi];top.classList.toggle("tvhide",!!v);lb.classList.toggle("tvhide",!v);
+    if(v){S.metric=v;$("fullLbTitle").textContent="Full leaderboard · "+VL[v];render()}
+    (v?lb:top).appendChild(dots);[...dots.children].forEach((d,i)=>d.classList.toggle("on",i===vi))};
+  showView();setInterval(()=>{vi=(vi+1)%views.length;showView()},20000);
   document.body.classList.add("tv");document.title="V12 Door Board · TV";
   const fit=()=>{document.body.style.zoom=Math.max(.8,Math.min(2.2,innerWidth/1500)).toFixed(2)};fit();addEventListener("resize",fit);
   const tick=()=>{const d=new Date();$("tvTime").textContent=d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});$("tvDate").textContent=d.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})};tick();setInterval(tick,15000);
   const order=["today","week"];let pi=0;
-  setInterval(()=>{pi=(pi+1)%order.length;S.period=order[pi];document.querySelectorAll(".periods button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.p===S.period));render()},45000);
+  setInterval(()=>{pi=(pi+1)%order.length;S.period=order[pi];document.querySelectorAll(".periods button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.p===S.period));render()},120000);
   let lock=null;const wake=async()=>{try{if("wakeLock" in navigator&&document.visibilityState==="visible")lock=await navigator.wakeLock.request("screen")}catch(e){}};wake();document.addEventListener("visibilitychange",wake);
   // Safety net for TVs and mirrored screens: reload every 10 minutes so the board can never sit stale for long.
   setInterval(()=>{location.reload()},600000);
