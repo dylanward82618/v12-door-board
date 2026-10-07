@@ -201,10 +201,11 @@ body.tv .tvdots i.on{background:var(--red)}
 .tvclock{display:none}
 body.tv{cursor:none;padding-bottom:16px}
 body.tv{overflow:hidden}
-body.tv .wrap{max-width:none;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"head head" "top side";gap:16px;align-items:stretch;height:var(--tvh,100vh)}
+body.tv .wrap{max-width:none;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,.85fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"head head head" "top side feed";gap:16px;align-items:stretch;height:var(--tvh,100vh)}
 body.tv .allstar,body.tv #fullLb{overflow:hidden;min-height:0}
 body.tv .grid>.col:last-child{height:100%;min-height:0;gap:16px}
-body.tv .grid>.col:last-child>.panel:last-of-type{flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+body.tv #feedPanel{grid-area:feed;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+body.tv .grid>.col:last-child{overflow:hidden}
 body.tv .tvfithide{display:none!important}
 body.tv header.top{grid-area:head}
 body.tv .allstar{grid-area:top}
@@ -381,7 +382,7 @@ footer.foot{display:flex;justify-content:center;gap:14px;padding-block:8px;color
         </div>
       </section>
 
-      <section class="panel" aria-label="Live feed">
+      <section class="panel" id="feedPanel" aria-label="Live feed">
         <div class="panel-h"><h2>Live feed</h2><span class="eyebrow">Apps · In &amp; Ups · Goals hit</span></div>
         <ul class="feed" id="feed"><li style="display:block" class="note">Every app, in &amp; up, and hit target lands here the second it's logged.</li></ul>
       </section>
@@ -766,7 +767,7 @@ function nextAlert(){const f=alertQ.shift();if(!f){alertBusy=false;return}alertB
 if(TV){
   // Left side rotates: Top Agents (Apps + AP) -> Full leaderboard by Apps -> Full leaderboard by AP
   const lb=$("fullLb"),top=document.querySelector(".allstar"),grid=document.querySelector(".grid");
-  grid.parentNode.insertBefore(lb,grid);S.team="all";
+  grid.parentNode.insertBefore(lb,grid);grid.parentNode.insertBefore($("feedPanel"),grid.nextSibling);S.team="all";
   const views=[null,"apps","ap"];
   const VL={points:"Points",apps:"Apps",ap:"AP",presentations:"Presentations",approaches:"Approaches"};
   const dots=document.createElement("div");dots.className="tvdots";views.forEach(()=>dots.appendChild(document.createElement("i")));
