@@ -232,6 +232,10 @@ body.tv ul.feed .txt{font-size:17px}
 .tvalert .who{font-family:var(--display);font-weight:800;font-style:italic;text-transform:uppercase;font-size:84px;line-height:1;color:var(--white);margin:10px 0}
 .tvalert .amt{font-family:var(--display);font-weight:800;font-size:56px;color:var(--white)}
 @media (prefers-reduced-motion:reduce){.tvalert,.tvalert .card{transition:none}}
+.tvsound{display:none}
+body.tv .tvsound{display:flex;position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:60;align-items:center;gap:10px;padding:14px 26px;border:0;background:var(--red);color:var(--white);font-family:var(--display);font-weight:800;font-style:italic;font-size:22px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;box-shadow:0 10px 40px rgba(225,6,0,.5);clip-path:polygon(4% 0,100% 0,96% 100%,0 100%)}
+body.tv .tvsound[hidden]{display:none}
+body.tv.soundask{cursor:default}
 .status{padding:10px 14px;border-left:3px solid var(--red);background:var(--red-deep);font-size:14px}
 [hidden]{display:none!important}
 html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -270,6 +274,7 @@ footer.foot{display:flex;justify-content:center;gap:14px;padding-block:8px;color
     </div>
     <div class="tvclock" aria-hidden="true"><b id="tvTime"></b><span id="tvDate"></span></div>
   </header>
+  <button type="button" class="tvsound" id="tvSound" hidden>Click anywhere to turn on sound</button>
   <div class="tvalert" id="tvAlert" aria-live="polite"><div class="card"><div class="k">New app written</div><div class="who" id="tvWho"></div><div class="amt num" id="tvAmt"></div></div></div>
 
   <div class="status" id="status" hidden></div>
@@ -760,8 +765,32 @@ $("undo").onclick=async()=>{
 };
 const TV=new URLSearchParams(location.search).has("tv"),BOOT=Date.now();
 const alertQ=[];let alertBusy=false;
+const SEEN=new Set();let seenInit=false;
+function announce(items){
+  if(!seenInit){items.forEach(f=>SEEN.add(f.id));seenInit=true;return}
+  const fresh=items.filter(f=>!SEEN.has(f.id));fresh.forEach(f=>SEEN.add(f.id));
+  let chime=false;
+  for(const f of fresh.slice().reverse()){if(Number(f.ts)<BOOT-60000)continue;
+    if(f.type==="apps")tvAlert(f);else chime=true}
+  if(chime&&!alertBusy)playChime();
+}
+// ---- Sound (TV mode). Browsers only allow sound after one click/keypress on the page.
+let AC=null;
+function audio(){if(!AC){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;AC=new C()}return AC}
+function soundReady(){const a=audio();return !!a&&a.state==="running"}
+function tone(a,{f0,f1,start,dur,vol,type}){const o=a.createOscillator(),g=a.createGain();o.type=type||"sine";
+  o.frequency.setValueAtTime(f0,start);if(f1)o.frequency.linearRampToValueAtTime(f1,start+dur);
+  g.gain.setValueAtTime(0.0001,start);g.gain.exponentialRampToValueAtTime(vol,start+0.02);g.gain.setValueAtTime(vol,start+dur-0.05);g.gain.exponentialRampToValueAtTime(0.0001,start+dur);
+  o.connect(g).connect(a.destination);o.start(start);o.stop(start+dur+0.02)}
+// Big alarm for a new app: 6 rising siren sweeps (~3s), then a two-note "ding-DING" finish
+function playAlarm(){const a=audio();if(!a||a.state!=="running")return;const t=a.currentTime+0.05;
+  for(let i=0;i<6;i++){tone(a,{f0:620,f1:1250,start:t+i*0.45,dur:0.42,vol:0.5,type:"sawtooth"});tone(a,{f0:310,f1:625,start:t+i*0.45,dur:0.42,vol:0.25,type:"square"})}
+  tone(a,{f0:1046,start:t+2.8,dur:0.35,vol:0.45,type:"triangle"});tone(a,{f0:1568,start:t+3.15,dur:0.9,vol:0.5,type:"triangle"})}
+// Small chime for any other feed update (in & ups, targets hit)
+function playChime(){const a=audio();if(!a||a.state!=="running")return;const t=a.currentTime+0.03;
+  tone(a,{f0:880,start:t,dur:0.18,vol:0.18,type:"sine"});tone(a,{f0:1318,start:t+0.14,dur:0.35,vol:0.16,type:"sine"})}
 function tvAlert(f){alertQ.push(f);if(!alertBusy)nextAlert()}
-function nextAlert(){const f=alertQ.shift();if(!f){alertBusy=false;return}alertBusy=true;
+function nextAlert(){const f=alertQ.shift();if(!f){alertBusy=false;return}alertBusy=true;playAlarm();
   $("tvWho").textContent=nameOf(f.agentId);$("tvAmt").textContent=f.ap?money(f.ap)+" AP":"";
   const el=$("tvAlert");el.classList.add("on");setTimeout(()=>{el.classList.remove("on");setTimeout(nextAlert,600)},7000)}
 if(TV){
@@ -791,9 +820,14 @@ if(TV){
   const order=["today","week"];let pi=0;
   setInterval(()=>{pi=(pi+1)%order.length;S.period=order[pi];document.querySelectorAll(".periods button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.p===S.period));render()},60000);
   let lock=null;const wake=async()=>{try{if("wakeLock" in navigator&&document.visibilityState==="visible")lock=await navigator.wakeLock.request("screen")}catch(e){}};wake();document.addEventListener("visibilitychange",wake);
-  // Safety net for TVs and mirrored screens: reload every 10 minutes so the board can never sit stale for long.
-  setInterval(()=>{location.reload()},600000);
-  addEventListener("online",()=>location.reload());
+  // Sound: show the button until someone clicks or presses a key once
+  const sb=$("tvSound");
+  const unlock=async()=>{const a=audio();if(!a)return;try{await a.resume()}catch(e){}
+    if(a.state==="running"){sb.hidden=true;document.body.classList.remove("soundask");
+      const t=a.currentTime;tone(a,{f0:1046,start:t+.02,dur:.12,vol:.12});tone(a,{f0:1568,start:t+.14,dur:.2,vol:.12})}};
+  const checkSound=()=>{const off=!soundReady();sb.hidden=!off;document.body.classList.toggle("soundask",off)};
+  ["pointerdown","keydown","touchstart"].forEach(ev=>addEventListener(ev,unlock));
+  audio()&&AC.resume().catch(()=>{});setTimeout(checkSound,800);setInterval(checkSound,5000);
 }
 S._day=dayKey(new Date());
 setInterval(()=>{renderFeed();const d=dayKey(new Date());if(d!==S._day){S._day=d;S.logDay="";render()}},30000);
@@ -836,7 +870,13 @@ $("fixDay").value=dayKey(new Date());
   db.collection("roster").onSnapshot(s=>{S.roster=new Map(s.docs.map(d=>[d.id,d.data()]));if(!s.metadata.fromCache)ready();render();synced()},fail);
   db.collection("stats").onSnapshot(s=>{S.stats=new Map(s.docs.map(d=>[d.id,d.data()]));if(!s.metadata.fromCache)ready();render();synced()},fail);
   db.collection("feed").orderBy("ts","desc").limit(40).onSnapshot(s=>{S.feed=s.docs.map(d=>Object.assign({id:d.id},d.data()));if(!s.metadata.fromCache)ready();renderFeed();synced();if(S.tvFit)S.tvFit();
-    if(TV)for(const c of s.docChanges()){const f=c.doc.data();if(c.type==="added"&&f&&f.type==="apps"&&Number(f.ts)>BOOT)tvAlert(f)}},fail);
+    if(TV)announce(s.docs.map(d=>Object.assign({id:d.id},d.data())))},fail);
+  // Backup for TVs: re-check everything every 60s in case the live connection silently stalls.
+  if(TV){let misses=0;setInterval(async()=>{try{
+      const [r,st,fe]=await Promise.all([db.collection("roster").get(),db.collection("stats").get(),db.collection("feed").orderBy("ts","desc").limit(40).get()]);
+      S.roster=new Map(r.docs.map(d=>[d.id,d.data()]));S.stats=new Map(st.docs.map(d=>[d.id,d.data()]));
+      S.feed=fe.docs.map(d=>Object.assign({id:d.id},d.data()));render();synced();announce(S.feed);misses=0;
+    }catch(e){if(++misses>=5)location.reload()}},60000)}
   db.doc("config/main").onSnapshot(s=>{const d=s.exists?s.data():null;
     S.teams=d&&Array.isArray(d.teams)?d.teams.filter(t=>typeof t==="string"):(window.V12_DEFAULT_TEAMS||[]);S.teamList=S.teams;
     const t=(d&&d.targets)||{};S.targets={...DEF_T};for(const k in DEF_T)if(Number(t[k])>0)S.targets[k]=Number(t[k]);
