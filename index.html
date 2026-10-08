@@ -232,6 +232,12 @@ body.tv ul.feed .txt{font-size:17px}
 .tvalert .who{font-family:var(--display);font-weight:800;font-style:italic;text-transform:uppercase;font-size:84px;line-height:1;color:var(--white);margin:10px 0}
 .tvalert .amt{font-family:var(--display);font-weight:800;font-size:56px;color:var(--white)}
 @media (prefers-reduced-motion:reduce){.tvalert,.tvalert .card{transition:none}}
+.tvbtn{border:1px solid var(--red);background:transparent;color:var(--white);padding:9px 16px;font-family:var(--display);font-weight:800;font-style:italic;font-size:16px;letter-spacing:.08em;text-transform:uppercase;transform:skewX(-10deg)}
+.tvbtn:hover{background:var(--red)}
+body.tv .tvbtn{display:none}
+.tvexit{display:none}
+body.tv.tvcursor .tvexit,body.tv.soundask .tvexit{display:block;position:fixed;right:18px;bottom:18px;z-index:70;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);padding:8px 14px;font-weight:700;font-size:14px;cursor:pointer}
+body.tv.tvcursor{cursor:default}
 .tvsound{display:none}
 .tvonly{display:none}
 body.tv .tvonly{display:inline}
@@ -274,8 +280,10 @@ footer.foot{display:flex;justify-content:center;gap:14px;padding-block:8px;color
       <button data-p="week" aria-pressed="false"><span>This week</span></button>
       <button data-p="month" aria-pressed="false"><span>This month</span></button>
     </div>
+    <button type="button" class="tvbtn" id="tvBtn" title="Show the board on a TV">TV mode</button>
     <div class="tvclock" aria-hidden="true"><b id="tvTime"></b><span id="tvDate"></span></div>
   </header>
+  <button type="button" class="tvexit" id="tvExit">Exit TV mode</button>
   <button type="button" class="tvsound" id="tvSound" hidden>Click anywhere to turn on sound</button>
   <div class="tvalert" id="tvAlert" aria-live="polite"><div class="card"><div class="k">New app written</div><div class="who" id="tvWho"></div><div class="amt num" id="tvAmt"></div></div></div>
 
@@ -765,14 +773,14 @@ $("undo").onclick=async()=>{
   for(const f of u.feeds){try{await S.db.doc("feed/"+f).delete()}catch(e){}}
   flash("Undone");
 };
-const TV=new URLSearchParams(location.search).has("tv"),BOOT=Date.now();
+let TV=false,TVSTART=Date.now();
 const alertQ=[];let alertBusy=false;
 const SEEN=new Set();let seenInit=false;
 function announce(items){
   if(!seenInit){items.forEach(f=>SEEN.add(f.id));seenInit=true;return}
   const fresh=items.filter(f=>!SEEN.has(f.id));fresh.forEach(f=>SEEN.add(f.id));
   let chime=false;
-  for(const f of fresh.slice().reverse()){if(Number(f.ts)<BOOT-60000)continue;
+  for(const f of fresh.slice().reverse()){if(Number(f.ts)<TVSTART-60000)continue;
     if(f.type==="apps")tvAlert(f);else chime=true}
   if(chime&&!alertBusy)playChime();
 }
@@ -795,45 +803,70 @@ function tvAlert(f){alertQ.push(f);if(!alertBusy)nextAlert()}
 function nextAlert(){const f=alertQ.shift();if(!f){alertBusy=false;return}alertBusy=true;playAlarm();
   $("tvWho").textContent=nameOf(f.agentId);$("tvAmt").textContent=f.ap?money(f.ap)+" AP":"";
   const el=$("tvAlert");el.classList.add("on");setTimeout(()=>{el.classList.remove("on");setTimeout(nextAlert,600)},7000)}
-if(TV){
+// ---- TV mode: entered from the "TV mode" button (or the old /?tv link); remembered on this device
+const tvTimers=[];let tvHome=null,tvLock=null,soundClicked=false;
+const VL={points:"Points",apps:"Apps",ap:"AP",presentations:"Presentations",approaches:"Approaches",inups:"In & Ups",leads:"Leads bought"};
+function tvFitNow(){if(!TV)return;const z=Math.max(.6,Math.min(2.2,innerWidth/1500));document.body.style.zoom=z.toFixed(3);
+  const pad=parseFloat(getComputedStyle(document.body).paddingBottom)||0;
+  document.documentElement.style.setProperty("--tvh",Math.floor(innerHeight/z-pad-8)+"px");S.tvFit&&S.tvFit()}
+addEventListener("resize",tvFitNow);
+function setPeriodBtns(){document.querySelectorAll(".periods button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.p===S.period))}
+function checkSound(){if(!TV)return;const off=!soundClicked||!soundReady();$("tvSound").hidden=!off;document.body.classList.toggle("soundask",off);$("tvSoundState").textContent=off?"Sound off":"Sound on"}
+async function unlockSound(){if(!TV)return;soundClicked=true;const a=audio();if(!a)return;try{await a.resume()}catch(e){}
+  if(a.state==="running"&&!S.soundChimed){S.soundChimed=true;const t=a.currentTime;tone(a,{f0:1046,start:t+.02,dur:.12,vol:.12});tone(a,{f0:1568,start:t+.14,dur:.2,vol:.12})}checkSound()}
+["pointerdown","keydown","touchstart"].forEach(ev=>addEventListener(ev,unlockSound));
+let cursorT;const showCursor=()=>{if(!TV)return;document.body.classList.add("tvcursor");clearTimeout(cursorT);cursorT=setTimeout(()=>document.body.classList.remove("tvcursor"),4000)};["mousemove","pointerdown"].forEach(ev=>addEventListener(ev,showCursor));
+addEventListener("keydown",e=>{if(e.key==="Escape"&&TV)exitTV()});
+function enterTV(){
+  if(TV)return;TV=true;try{localStorage.setItem("v12-tv","1")}catch(e){}
+  const lb=$("fullLb"),top=document.querySelector(".allstar"),grid=document.querySelector(".grid"),fp=$("feedPanel");
+  tvHome={lbP:lb.parentNode,lbN:lb.nextSibling,fpP:fp.parentNode,fpN:fp.nextSibling,metric:S.metric,period:S.period,team:S.team,title:document.title};
+  grid.parentNode.insertBefore(lb,grid);grid.parentNode.insertBefore(fp,grid.nextSibling);S.team="all";
   // Left side rotates: Top Agents (Apps + AP) -> Full leaderboard by Apps -> Full leaderboard by AP
-  const lb=$("fullLb"),top=document.querySelector(".allstar"),grid=document.querySelector(".grid");
-  grid.parentNode.insertBefore(lb,grid);grid.parentNode.insertBefore($("feedPanel"),grid.nextSibling);S.team="all";
   const views=[null,"apps","ap"];
-  const VL={points:"Points",apps:"Apps",ap:"AP",presentations:"Presentations",approaches:"Approaches"};
-  const dots=document.createElement("div");dots.className="tvdots";views.forEach(()=>dots.appendChild(document.createElement("i")));
+  const dots=document.createElement("div");dots.className="tvdots";dots.id="tvDots";views.forEach(()=>dots.appendChild(document.createElement("i")));
   let vi=0;
   const showView=()=>{const v=views[vi];top.classList.toggle("tvhide",!!v);lb.classList.toggle("tvhide",!v);
     if(v){S.metric=v;$("fullLbTitle").textContent="Full leaderboard · "+VL[v];render()}
     (v?lb:top).appendChild(dots);[...dots.children].forEach((d,i)=>d.classList.toggle("on",i===vi));if(S.tvFit)S.tvFit()};
-  showView();setInterval(()=>{vi=(vi+1)%views.length;showView()},20000);
   document.body.classList.add("tv");document.title="V12 Door Board · TV";
-  const fit=()=>{const z=Math.max(.6,Math.min(2.2,innerWidth/1500));document.body.style.zoom=z.toFixed(3);
-    const pad=parseFloat(getComputedStyle(document.body).paddingBottom)||0;
-    document.documentElement.style.setProperty("--tvh",Math.floor(innerHeight/z-pad-8)+"px");S.tvFit&&S.tvFit()};
   // Hide whole rows that don't fit, so nothing on the TV is ever cut in half.
-  S.tvFit=()=>requestAnimationFrame(()=>{for(const id of ["feed","board","topApps","topAP"]){const ul=$(id);if(!ul)continue;
+  S.tvFit=()=>requestAnimationFrame(()=>{if(!TV)return;for(const id of ["feed","board","topApps","topAP"]){const ul=$(id);if(!ul)continue;
     [...ul.children].forEach(li=>li.classList.remove("tvfithide"));
     const box=ul.closest(".panel");if(!box||box.classList.contains("tvhide"))continue;
     const lim=box.getBoundingClientRect().bottom-4;
     [...ul.children].forEach(li=>{if(li.getBoundingClientRect().bottom>lim)li.classList.add("tvfithide")})}});
-  fit();addEventListener("resize",fit);
-  const tick=()=>{const d=new Date();$("tvTime").textContent=d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});$("tvDate").textContent=d.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})};tick();setInterval(tick,15000);
-  const order=["today","week"];let pi=0;
-  setInterval(()=>{pi=(pi+1)%order.length;S.period=order[pi];document.querySelectorAll(".periods button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.p===S.period));render()},60000);
-  let lock=null;const wake=async()=>{try{if("wakeLock" in navigator&&document.visibilityState==="visible")lock=await navigator.wakeLock.request("screen")}catch(e){}};wake();document.addEventListener("visibilitychange",wake);
-  // Sound: show the button until someone clicks or presses a key once
-  const sb=$("tvSound");
-  let clicked=false;
-  const unlock=async()=>{clicked=true;const a=audio();if(!a)return;try{await a.resume()}catch(e){}
-    if(a.state==="running"){sb.hidden=true;document.body.classList.remove("soundask");$("tvSoundState").textContent="Sound on";
-      const t=a.currentTime;tone(a,{f0:1046,start:t+.02,dur:.12,vol:.12});tone(a,{f0:1568,start:t+.14,dur:.2,vol:.12})}};
-  // Always ask for one click: some browsers report sound as ready when it is actually muted until a click.
-  const checkSound=()=>{const off=!clicked||!soundReady();sb.hidden=!off;document.body.classList.toggle("soundask",off);$("tvSoundState").textContent=off?"Sound off":"Sound on"};
-  checkSound();
-  ["pointerdown","keydown","touchstart"].forEach(ev=>addEventListener(ev,unlock));
-  audio()&&AC.resume().catch(()=>{});setInterval(checkSound,3000);
+  showView();tvFitNow();
+  tvTimers.push(setInterval(()=>{vi=(vi+1)%views.length;showView()},20000));
+  const tick=()=>{const d=new Date();$("tvTime").textContent=d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});$("tvDate").textContent=d.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})};tick();tvTimers.push(setInterval(tick,15000));
+  const order=["today","week"];let pi=0;S.period="today";setPeriodBtns();render();
+  tvTimers.push(setInterval(()=>{pi=(pi+1)%order.length;S.period=order[pi];setPeriodBtns();render()},60000));
+  const wake=async()=>{try{if(TV&&"wakeLock" in navigator&&document.visibilityState==="visible")tvLock=await navigator.wakeLock.request("screen")}catch(e){}};wake();
+  document.addEventListener("visibilitychange",wake);tvHome.wake=wake;
+  // Alerts only for activity logged after TV mode starts
+  TVSTART=Date.now();SEEN.clear();S.feed.forEach(f=>SEEN.add(f.id));seenInit=S.feed.length>0;
+  audio()&&AC.resume().catch(()=>{});checkSound();tvTimers.push(setInterval(checkSound,3000));
+  tvTimers.push(setInterval(()=>{if(S.pollTV)S.pollTV()},60000));
+  scrollTo(0,0);
 }
+function exitTV(){
+  if(!TV)return;TV=false;try{localStorage.removeItem("v12-tv")}catch(e){}
+  tvTimers.splice(0).forEach(clearInterval);
+  const lb=$("fullLb"),top=document.querySelector(".allstar"),fp=$("feedPanel"),h=tvHome||{};
+  const dots=$("tvDots");if(dots)dots.remove();
+  if(h.lbP)h.lbP.insertBefore(lb,h.lbN);if(h.fpP)h.fpP.insertBefore(fp,h.fpN);
+  top.classList.remove("tvhide");lb.classList.remove("tvhide");
+  document.querySelectorAll(".tvfithide").forEach(e=>e.classList.remove("tvfithide"));
+  document.body.classList.remove("tv","soundask","tvcursor");document.body.style.zoom="";document.documentElement.style.removeProperty("--tvh");
+  $("tvSound").hidden=true;$("tvAlert").classList.remove("on");alertQ.length=0;
+  if(h.wake)document.removeEventListener("visibilitychange",h.wake);try{tvLock&&tvLock.release()}catch(e){}tvLock=null;
+  S.metric=h.metric||"points";S.period=h.period||"today";S.team=h.team||"all";document.title=h.title||"V12 Door Board";
+  document.querySelectorAll(".metrics button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.m===S.metric));
+  $("fullLbTitle").textContent="Full leaderboard";setPeriodBtns();render();
+}
+$("tvBtn").onclick=()=>{soundClicked=true;enterTV();unlockSound()};
+$("tvExit").onclick=e=>{e.stopPropagation();exitTV()};
+{let want=new URLSearchParams(location.search).has("tv");try{want=want||localStorage.getItem("v12-tv")==="1"}catch(e){}if(want)enterTV()}
 S._day=dayKey(new Date());
 setInterval(()=>{renderFeed();const d=dayKey(new Date());if(d!==S._day){S._day=d;S.logDay="";render()}},30000);
 render();
@@ -877,11 +910,11 @@ $("fixDay").value=dayKey(new Date());
   db.collection("feed").orderBy("ts","desc").limit(40).onSnapshot(s=>{S.feed=s.docs.map(d=>Object.assign({id:d.id},d.data()));if(!s.metadata.fromCache)ready();renderFeed();synced();if(S.tvFit)S.tvFit();
     if(TV)announce(s.docs.map(d=>Object.assign({id:d.id},d.data())))},fail);
   // Backup for TVs: re-check everything every 60s in case the live connection silently stalls.
-  if(TV){let misses=0;setInterval(async()=>{try{
+  {let misses=0;S.pollTV=async()=>{if(!TV)return;try{
       const [r,st,fe]=await Promise.all([db.collection("roster").get(),db.collection("stats").get(),db.collection("feed").orderBy("ts","desc").limit(40).get()]);
       S.roster=new Map(r.docs.map(d=>[d.id,d.data()]));S.stats=new Map(st.docs.map(d=>[d.id,d.data()]));
       S.feed=fe.docs.map(d=>Object.assign({id:d.id},d.data()));render();synced();announce(S.feed);misses=0;
-    }catch(e){if(++misses>=5)location.reload()}},60000)}
+    }catch(e){if(++misses>=5)location.reload()}}}
   db.doc("config/main").onSnapshot(s=>{const d=s.exists?s.data():null;
     S.teams=d&&Array.isArray(d.teams)?d.teams.filter(t=>typeof t==="string"):(window.V12_DEFAULT_TEAMS||[]);S.teamList=S.teams;
     const t=(d&&d.targets)||{};S.targets={...DEF_T};for(const k in DEF_T)if(Number(t[k])>0)S.targets[k]=Number(t[k]);
